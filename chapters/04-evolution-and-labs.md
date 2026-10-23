@@ -33,7 +33,7 @@
 
 ### “约少 40% token”到底指什么
 
-v1.0.0 变更日志给出的例子是：默认工具并启用 Code Mode 时，一个 GPT-5.6 请求的提示规模从约 5,300 降到约 3,300 token。减少来自说明精简、按需阅读模型 API 文档、避免重复声明等。它是上游记录中的特定场景，不是本书实测，更不是任何项目、模型、工具数量下都少 40%。[S2](#s2)
+v1.0.0 变更日志给出的例子是：默认工具并启用 Code Mode 时，一个 GPT-5.6 请求的提示规模从约 5,300 降到约 3,300 token。减少来自说明精简、按需阅读模型 API 文档、避免重复声明等。这是上游记录中的特定场景，不是本书实测，也不表示任何项目、模型、工具数量下都少 40%。[S2](#s2)
 
 ### 三个明确的迁移断点
 
@@ -41,11 +41,11 @@ v1.0.0 变更日志给出的例子是：默认工具并启用 Code Mode 时，�
 
 **MCP 类型声明。** 独立包在 v1.2.0 移除了 `MCP_TYPESCRIPT_PREAMBLE` 和 `mcpStructuredContentSchema()`。输出 schema 直接描述完整返回对象，声明渲染不再依赖一个悬空的 `CallToolResult<T>` 名称。消费这些底层导出的应用要更新。[S21](#s21)
 
-**独立沙箱 close()。** v1.3.0 中结果和 `close()` 在请求关闭后即可 settle，不代表 worker 已退出。自己管理资源池时，用 `onWorkerStarted(exited)` 或 `acquireWorker()` 的释放回调追踪真实退出，不能照旧按结果完成释放容量。[S13](#s13)、[S21](#s21)
+**独立沙箱 close()。** v1.3.0 中结果和 `close()` 在请求关闭后即可 settle，但不代表 worker 已退出。自己管理资源池时，要用 `onWorkerStarted(exited)` 或 `acquireWorker()` 的释放回调追踪真实退出，不能照旧在结果完成后就释放容量。[S13](#s13)、[S21](#s21)
 
 ### 不要继续照旧实验目录做设计
 
-v1.0.0 的 `pi-agent-core` 清理与 v1.2.0 的 CLI 实验栈清理是两件事。前者确实移除了该包的旧实验性 harness 导出；后者移除的 client/protocol/server 栈未进入正式 coding-agent 发布包。做源码研究时能看见它们，不能据此假设它们都是稳定产品 API。[S18](#s18)、[S22](#s22)
+v1.0.0 对 `pi-agent-core` 的清理与 v1.2.0 对 CLI 实验栈的清理是两件事。前者移除了该包的旧实验性 harness 导出；后者移除的 client/protocol/server 栈从未进入正式 coding-agent 发布包。做源码研究时能看到它们，但不能据此把它们都当作稳定产品 API。[S18](#s18)、[S22](#s22)
 
 # 第 11 章：独立沙箱、云端执行与 Durable 重放
 
@@ -87,7 +87,7 @@ try {
 }
 ```
 
-这是独立库示例，直接注入自己的可信函数。若要套进现有 Agent，不能因为省事直接调用原始 `tool.execute()`，把既有验证和钩子绕过。官方 CLI 走 `ctx.executeTool()`；低层 Agent 应使用相应工具调用管线。[S13](#s13)
+这是独立库示例，直接注入自己的可信函数。若要嵌入现有 Agent，不能图省事直接调用原始 `tool.execute()`，否则会绕过既有验证和钩子。官方 CLI 走 `ctx.executeTool()`；低层 Agent 应使用对应的工具调用管线。[S13](#s13)
 
 ### 11.2 为什么 Cloudflare 要把 VM 放进另一个 Worker
 
@@ -97,9 +97,9 @@ v1.2.0 新增 `RemoteCodemodeSandbox`：工具和调用记录留在会话一侧�
 
 ![三种沙箱部署方式](diagrams/deployment.svg)
 
-上游 README 记录了特定 Cloudflare 测试：让脚本持续计算十秒，放在会话对象内或由它加载的 Dynamic Worker 会延迟其他会话请求约十秒，单独部署的 Worker 则约为 50 ms。该数字是上游环境测量，用来说明部署边界选择，不承诺本地环境或你的账号相同。
+上游 README 记录了一项特定 Cloudflare 测试：让脚本持续计算十秒，放在会话对象内或由它加载的 Dynamic Worker 会延迟其他会话请求约十秒，单独部署的 Worker 则约为 50 ms。该数字来自上游环境测量，用来说明部署边界的选择，不保证本地环境或你的账号得到相同结果。
 
-Cloudflare 还有两个限制要单独理解：计算不 yield 时墙钟 timeout 不足以约束 CPU，使用 interrupt budget；远程 abort 可以先结束调用侧等待，VM 在下一次工具调用或耗尽预算时才停。远程默认每 VM 32 MiB，不能套用普通 CLI 的 256 MiB。
+Cloudflare 还有两个限制需要单独理解：计算不 yield 时，墙钟 timeout 不足以约束 CPU，要使用 interrupt budget；远程 abort 可以先结束调用侧等待，VM 要到下一次工具调用或耗尽预算时才停。远程默认每 VM 32 MiB，不能套用普通 CLI 的 256 MiB。
 
 `InlineCodemodeSandbox` 直接在调用线程运行，适合能接受阻塞的宿主。portable 入口不包含 Node imports，方便这些环境共用同一脚本 API。
 
@@ -121,7 +121,7 @@ Cloudflare 还有两个限制要单独理解：计算不 yield 时墙钟 timeout
 
 ### 一个“扣款后崩溃”的边界案例
 
-假设工具向外部系统发起扣款，外部扣款成功，但本地还没记录结果就崩溃。重启后能否再次调用？不能靠“脚本可以重放”来决定。Durable 工具只有声明 `replay: "safe"` 才能在中断后重新执行；否则会产生 interrupted 错误。即便声明 safe，外部副作用仍需服务端幂等 key 或查询确认。[S23](#s23)
+假设工具向外部系统发起一笔扣款，外部扣款成功，但本地还没记录结果就崩溃。重启后能否再次调用？这不能靠“脚本可以重放”来决定。Durable 工具只有声明 `replay: "safe"` 才能在中断后重新执行，否则会产生 interrupted 错误。即便声明了 safe，外部副作用仍需服务端幂等 key 或查询确认。[S23](#s23)
 
 所以它并不提供跨任意外部服务的“恰好一次副作用”魔法。它提供的是可记录、可检查、可恢复的调度和调用关系。代码路径改变、VM 指纹或 Code Mode 版本变化，以及 deadline 已经过期，都可能令重放报错，而不是盲目继续。
 
@@ -129,11 +129,11 @@ Cloudflare 还有两个限制要单独理解：计算不 yield 时墙钟 timeout
 
 `pi-env` 把 Durable 工具的文件与命令操作转到远端机器：本地保留 Harness、存储和凭据；通过 SSH 启动小型 Rust daemon，运行协议化文件与进程操作。`RemoteExecutionEnv` 尽量保持与 `NodeExecutionEnv` 相同的语义。[S24](#s24)
 
-这与把 QuickJS VM 放远端是两个独立选择：VM 放哪里，决定脚本计算在哪里；执行环境放哪里，决定文件和命令在哪里发生。远程执行也不自动成为沙箱，仍要限制远端账户权限、网络和可用凭据，核验 SSH host key。
+这与把 QuickJS VM 放到远端是两个独立选择：VM 放在哪里，决定脚本计算在哪里；执行环境放在哪里，决定文件和命令在哪里发生。远程执行也不会自动成为沙箱，仍需限制远端账户权限、网络和可用凭据，并核验 SSH host key。
 
 ![Durable、Code Mode、模型层与远程执行环境的实际包关系](diagrams/durable-package-dependencies.svg)
 
-这张图与第 3 章的 CLI 依赖图应分开阅读：一个是实验性持久执行方案，一个是普通编码代理。它们复用模型和沙箱基础库，不意味着生命周期、状态格式和恢复契约相同。
+这张图应与第 3 章的 CLI 依赖图分开阅读：一个是实验性持久执行方案，一个是普通编码代理。两者复用模型和沙箱基础库，不意味着生命周期、状态格式和恢复契约相同。
 
 # 第 12 章：迁移路线与动手实验
 
@@ -145,7 +145,7 @@ Cloudflare 还有两个限制要单独理解：计算不 yield 时墙钟 timeout
 
 如果嵌入的是旧 `Agent`，重点检查 transport API 到当前 `streamFn` / 消息转换接口的变化、旧附件模型、事件与并发语义。不要只替换 npm 包名就假定类型兼容。若依赖旧 `AgentHarness`，当前 `pi-agent-core` 已不再导出它，需要明确迁向 `AgentSession` 还是实验性 Durable。[S6](#s6)、[S22](#s22)
 
-如果自定义过 hooks 与 tools，按当前 extension API 合并注册位置，并根据事件的准确返回类型处理阻止、变换与通知。不要把早年事件名机械替换成新名字而不检查契约。
+如果自定义过 hooks 与 tools，按当前 extension API 合并注册位置，并按事件的准确返回类型处理阻止、变换与通知。不要只把早年事件名机械替换成新名字而不检查契约。
 
 ### 12.2 从 v0.99.2 迁移，做一张小检查表
 
@@ -211,7 +211,7 @@ pi --tools +codemode
 node examples/run-checks.mjs
 ```
 
-它检查并行读取与字段筛选、部分失败保留、非零 shell 退出码、成功/失败状态提交，图片分类的成功与失败契约，以及输出减量算术。它不是 QuickJS 的安全测试，不调用外部服务，也不能证明 MCP 或真实沙箱无缺陷。Code Mode 脚本放在 `examples/scripts/`，可以阅读或交给 Pi 使用。
+它检查并行读取与字段筛选、部分失败保留、非零 shell 退出码、成功/失败状态提交、图片分类的成功与失败契约，以及输出减量算术。它不是 QuickJS 的安全测试，不调用外部服务，也不能证明 MCP 或真实沙箱没有缺陷。Code Mode 脚本放在 `examples/scripts/`，可以阅读，也可以交给 Pi 使用。
 
 ### 实验 C：观察分支与外部世界的区别
 
@@ -219,7 +219,7 @@ node examples/run-checks.mjs
 
 ### 实验 D：按官方 SDK 示例接上 MCP
 
-`examples/sdk-codemode-mcp.ts` 是固定版本官方示例的副本。重点阅读三处：`extensionFactories` 安装三个内置扩展；`defaultTools` 增量启用；`session.bindExtensions({})` 发出启动事件。真正运行需要当前包、凭据和 MCP 配置。本次没有自动执行付费模型调用或添加服务器。
+`examples/sdk-codemode-mcp.ts` 是固定版本官方示例的副本。重点阅读三处：`extensionFactories` 安装三个内置扩展；`defaultTools` 增量启用；`session.bindExtensions({})` 发出启动事件。真正运行还需要当前包、凭据和 MCP 配置。本次没有自动执行付费模型调用，也没有添加服务器。
 
 ### 五个问题，检查是否真的理解
 

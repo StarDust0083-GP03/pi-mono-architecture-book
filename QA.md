@@ -12,6 +12,12 @@
 - PDF：49 页，A4。由 Chromium 重新打印，并用 `pdftotext` 核对 v1.4.0、worker 上限、摘要预算、图片分类和 S29 来源等新增内容。
 - SDK 示例与 v1.4.0 上游的 `14-codemode-mcp.ts` 逐字节一致。
 
+## 中文语言修订
+
+本轮通过 DeepSeek 官方 API（`https://api.deepseek.com`）调用 DeepSeek V4.1 Flash，Pi 中的模型 ID 为 `deepseek-flash`。模型提供段落润色稿，经审校采用 59 处修改，没有改动当前聊天模型或全局默认配置。
+
+修改前后逐项比对：标题、代码块、表格、列表、图片、行内代码、数字和来源引用全部一致。网页、PDF、EPUB 已重新构建，PDF 仍为 49 页，结构校验、教学脚本与 EPUBCheck 均通过。这里的模型调用仅用于文字编辑，不作为上游 Pi、沙箱或真实工具集成测试的证据。
+
 ## 未执行
 
 - 上游完整测试套件，包括真实 worker 准入和压缩集成测试。

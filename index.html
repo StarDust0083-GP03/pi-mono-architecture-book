@@ -182,11 +182,11 @@ blockquote{margin:24px 0;border-left:3px solid var(--brand);padding:1px 20px;col
 <h1 id="cover">从工具循环到 Code Mode</h1>
 <h2>Pi 架构演进：v0.9.4、v0.99.2 与 v1.4.0</h2>
 <p><strong>一部跟着源码读的中文电子书。</strong> 本版依据官方仓库、固定版本源码和发布记录整理，核查日期为 2026 年 10 月 23 日，比较端点更新为 <strong>v1.4.0</strong>，正式发布时间为 2026 年 10 月 21 日。保留 v1.3.0 作为上一版参照，本书不把标签之后 <code>main</code> 上的代码混进来。</p>
-<p>先说结论：Pi 的核心仍然是“模型产生响应，工具执行操作，结果供下一轮模型使用”的循环。变化主要发生在循环外围：树形会话、统一扩展系统、更丰富的工具契约、内置 MCP，以及让模型用 JavaScript 编排工具的 <strong>Code Mode</strong>。最新仓库还提供独立的实验性 Durable 运行时，它可以恢复中断任务，但不是普通 CLI 已经切换过去的新内核。</p>
+<p>先说结论：Pi 的核心仍是“模型产生响应，工具执行操作，结果供下一轮模型使用”的循环。变化主要发生在循环外围：树形会话、统一扩展系统、更丰富的工具契约、内置 MCP，以及让模型用 JavaScript 编排工具的 <strong>Code Mode</strong>。仓库另外提供独立的实验性 Durable 运行时，可以恢复中断任务，但普通 CLI 没有切换到它，它也不是新内核。</p>
 <p>本书沿用同目录学习课程的组织方式：一章解决一个问题，先建立直觉，再看图、沿源码追踪，最后做例子和练习。重点了解 Code Mode，可以先读第 1、3、5、6、8、11 章；想理解整套架构则顺序阅读。你只需了解基本 JavaScript、Promise，以及“模型能够请求调用工具”这一概念，不需要预先掌握编译器或 WebAssembly。</p>
 <section class="print-toc" aria-label="打印版目录"><h2>目录</h2><a href="#chapter-1">第 1 章：先把版本说清楚</a><a href="#chapter-2">第 2 章：v0.9.4 原本是怎样工作的</a><a href="#chapter-3">第 3 章：当前架构，分清 CLI 与独立基础库</a><a href="#chapter-4">第 4 章：一次请求的完整生命周期</a><a href="#chapter-5">第 5 章：Code Mode 到底改变了什么</a><a href="#chapter-6">第 6 章：拆开沙箱，看见真正的调用链</a><a href="#chapter-7">第 7 章：工具太多时，怎样发现而不塞满提示</a><a href="#chapter-8">第 8 章：结果、失败、并发与状态</a><a href="#chapter-9">第 9 章：扩展、模型与界面，哪些没被 Code Mode 替代</a><a href="#chapter-10">第 10 章：从 0.99.2 到 1.4.0，具体差了什么</a><a href="#chapter-11">第 11 章：独立沙箱、云端执行与 Durable 重放</a><a href="#chapter-12">第 12 章：迁移路线与动手实验</a><a href="#sources">来源索引与核查范围</a></section><h1 id="chapter-1">第 1 章：先把版本说清楚</h1>
-<p><strong>本章目标：知道我们究竟在比较哪两个时代。</strong></p>
-<p><code>0.9.x</code> 和 <code>0.99.x</code> 不是同一组版本。版本号不是小数，而是整数元组；次版本号 99 在 9 之后。把两者混为一谈，就会把早已存在的能力误写成最新版本才出现。</p>
+<p><strong>本章目标：弄清我们比较的是哪两个版本区间。</strong></p>
+<p><code>0.9.x</code> 和 <code>0.99.x</code> 不是同一组版本。版本号按整数元组比较，不是小数；次版本号 99 排在 9 之后。把两者混为一谈，就会把早已存在的能力误写成最新版本才出现。</p>
 <table>
 <thead>
 <tr>
@@ -241,7 +241,7 @@ blockquote{margin:24px 0;border-left:3px solid var(--brand);padding:1px 20px;col
 <p>官方仓库现在叫 <code>earendil-works/pi</code>，历史上的 <code>badlogic/pi-mono</code> Git 地址仍能访问到这个项目。旧源码里的包名前缀是 <code>@mariozechner/*</code>，当前是 <code>@earendil-works/*</code>。改名是迁移时必须处理的事情，但改名本身不是一种新 Agent 算法。<a href="#s1">S1</a>、<a href="#s2">S2</a></p>
 <p>你原有的 <code>learning/pi-mono</code> 检出点显示为 <code>v0.54.0-1-g3a3e37d3</code>，而且存在本地修改。本次没有修改它，也没有升级当前安装的 Pi。<code>sources/</code> 单独保存四个用于比较的固定版本，新增 <code>pi-v1.4.0/</code>，不改动原有三个源码检出点。</p>
 <h3>本书说的“架构”包括什么</h3>
-<p>我们比较模块职责、依赖边界、数据流、状态归属、扩展方式和失败行为，而不是逐条复述所有模型新增、终端按键修复。完整的文件级变更清单另存于 <code>sources/</code>，适合需要穷尽排查时查阅。</p>
+<p>我们比较模块职责、依赖边界、数据流、状态归属、扩展方式和失败行为，不逐条复述所有模型新增和终端按键修复。完整的文件级变更清单另存于 <code>sources/</code>，需要穷尽排查时可以查阅。</p>
 <p>书中区分三类内容：</p>
 <ul>
 <li><strong>已核实行为</strong>：固定标签的文档、源码或发布记录能够支持。</li>
@@ -249,15 +249,15 @@ blockquote{margin:24px 0;border-left:3px solid var(--brand);padding:1px 20px;col
 <li><strong>示意算术</strong>：用于解释开销的假设工作量，不是实测性能。</li>
 </ul>
 <h3>不要被 diff 数字带偏</h3>
-<p>完整 Git 比较中，v0.9.4 到 v1.4.0 涉及 2,172 个变更文件；v0.99.2 到 v1.4.0 涉及 1,451 个；单独比较 v1.3.0 到 v1.4.0 则有 343 个。里面包括测试、文档、生成数据和实验代码删除。尤其 v1.2.0 删除了尚未进入正式发布包的实验性服务端、客户端和插件栈。不能看到大量删除，就断言正式 CLI 已经换成另一个分布式运行时。<a href="#s2">S2</a>、<a href="#s18">S18</a></p>
-<p><strong>理解检查：</strong> 如果你以前用的是 v0.99.2，Code Mode 不是 v1.0 才发明的；如果你指的是 v0.9.4，就必须把中间接近一年的 harness 演进算进去。</p>
+<p>完整 Git 比较中，v0.9.4 到 v1.4.0 涉及 2,172 个变更文件；v0.99.2 到 v1.4.0 涉及 1,451 个；单独比较 v1.3.0 到 v1.4.0 则有 343 个。其中包含测试、文档、生成数据和实验代码的删除。尤其 v1.2.0 删除了尚未进入正式发布包的实验性服务端、客户端和插件栈。变更文件多、删除量大，并不等于正式 CLI 已经换成另一个分布式运行时。<a href="#s2">S2</a>、<a href="#s18">S18</a></p>
+<p><strong>理解检查：</strong> 如果你以前用的是 v0.99.2，要知道 Code Mode 并非 v1.0 才出现；如果你比较的是 v0.9.4，则必须把中间接近一年的 harness 演进计算在内。</p>
 <figure><svg style="font-family:Noto Sans CJK SC,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 568" role="img" aria-labelledby="architecture-comparison-title architecture-comparison-desc"><title id="architecture-comparison-title">旧版与新版的分层对照</title><desc id="architecture-comparison-desc">旧版 Agent 经 transport 使用 ai 包中的循环；新版 AgentSession 管理会话，agent 包拥有循环，ai 专注模型接入。</desc><defs><marker id="architecture-comparison-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#1B365D"/></marker></defs><rect width="960" height="568" fill="#faf9f5"/><path d="M230 168 V240" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#architecture-comparison-arrow)"/><path d="M230 328 V400" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#architecture-comparison-arrow)"/><path d="M730 168 V240" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#architecture-comparison-arrow)"/><path d="M730 328 V400" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#architecture-comparison-arrow)"/><rect x="70" y="80" width="320" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="230.0" y="110" text-anchor="middle" font-size="20" fill="#20201d">编码应用</text><text x="230.0" y="153" text-anchor="middle" font-size="15" fill="#6b6a64">旧版 main / TUI</text><rect x="70" y="240" width="320" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="230.0" y="270" text-anchor="middle" font-size="20" fill="#20201d">Agent + Transport</text><text x="230.0" y="313" text-anchor="middle" font-size="15" fill="#6b6a64">状态与传输抽象</text><rect x="70" y="400" width="320" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="230.0" y="430" text-anchor="middle" font-size="20" fill="#20201d">ai：循环与模型接入</text><text x="230.0" y="473" text-anchor="middle" font-size="15" fill="#6b6a64">工具循环在 ai 包内</text><rect x="570" y="80" width="320" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="730.0" y="110" text-anchor="middle" font-size="20" fill="#20201d">AgentSession / 资源 / 扩展</text><text x="730.0" y="153" text-anchor="middle" font-size="15" fill="#6b6a64">树形会话与上下文投影</text><rect x="570" y="240" width="320" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="730.0" y="270" text-anchor="middle" font-size="20" fill="#20201d">agent：Agent 与工具循环</text><text x="730.0" y="313" text-anchor="middle" font-size="15" fill="#6b6a64">通用嵌套调用契约</text><rect x="570" y="400" width="320" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="730.0" y="430" text-anchor="middle" font-size="20" fill="#20201d">ai：多提供商模型接入</text><text x="730.0" y="473" text-anchor="middle" font-size="15" fill="#6b6a64">流式事件与公共消息类型</text><text x="70" y="40" font-size="18" fill="#6b6a64">v0.9.4</text><text x="570" y="40" font-size="18" fill="#6b6a64">v1.4.0 普通 CLI</text><text x="70" y="540" font-size="18" fill="#6b6a64">Code Mode 接在新版工具侧；Durable 不在这条普通 CLI 运行链中。</text></svg><figcaption>旧版与新版架构对照：循环迁到 agent，应用层形成 AgentSession 与扩展体系</figcaption></figure>
-<p>左边是旧版职责位置，右边是新版普通 CLI 的对应层。这里强调代码归属与装配边界，不表示所有能力都是在单个版本中同时完成迁移。</p>
+<p>左边是旧版职责所在的位置，右边是新版普通 CLI 的对应层。图中强调的是代码归属与装配边界，并不表示所有能力都在同一个版本里完成迁移。</p>
 <h1 id="chapter-2">第 2 章：v0.9.4 原本是怎样工作的</h1>
 <p><strong>本章目标：先看清旧循环，再理解新增的编排层。</strong></p>
 <p>v0.9.4 已经把模型提供商接入、有状态 Agent、编码应用和终端渲染拆开。它并不是“一段 shell 加一次模型调用”。</p>
 <figure><svg style="font-family:Noto Sans CJK SC,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 440" role="img" aria-labelledby="old-stack-title old-stack-desc"><title id="old-stack-title">v0.9.4 的职责分层</title><desc id="old-stack-desc">编码应用装配有状态 Agent 与 transport，ai 包内的循环调用模型和工具，SessionManager 保存线性日志。</desc><defs><marker id="old-stack-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#1B365D"/></marker></defs><rect width="960" height="440" fill="#faf9f5"/><path d="M480 116 V156" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#old-stack-arrow)"/><path d="M480 244 V284" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#old-stack-arrow)"/><path d="M360 328 H280" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#old-stack-arrow)"/><path d="M600 328 H680" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#old-stack-arrow)"/><path d="M600 72 H680" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#old-stack-arrow)"/><rect x="360" y="28" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="480.0" y="58" text-anchor="middle" font-size="20" fill="#20201d">编码应用</text><text x="480.0" y="101" text-anchor="middle" font-size="15" fill="#6b6a64">coding-agent/main.ts</text><rect x="360" y="156" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="480.0" y="186" text-anchor="middle" font-size="20" fill="#20201d">有状态 Agent</text><text x="480.0" y="229" text-anchor="middle" font-size="15" fill="#6b6a64">agent/src/agent.ts</text><rect x="360" y="284" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="480.0" y="314" text-anchor="middle" font-size="20" fill="#20201d">Transport → 工具循环</text><text x="480.0" y="357" text-anchor="middle" font-size="15" fill="#6b6a64">loop 位于 ai 包</text><rect x="40" y="284" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="160.0" y="314" text-anchor="middle" font-size="20" fill="#20201d">工具执行</text><text x="160.0" y="357" text-anchor="middle" font-size="15" fill="#6b6a64">校验后顺序执行</text><rect x="680" y="284" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="800.0" y="314" text-anchor="middle" font-size="20" fill="#20201d">模型提供商</text><text x="800.0" y="357" text-anchor="middle" font-size="15" fill="#6b6a64">统一流式接口</text><rect x="680" y="28" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="800.0" y="58" text-anchor="middle" font-size="20" fill="#20201d">SessionManager</text><text x="800.0" y="101" text-anchor="middle" font-size="15" fill="#6b6a64">线性 JSONL / 复制分支</text><text x="40" y="414" font-size="18" fill="#6b6a64">旧版已有工具校验、事件流和分支；还没有当前这一套 Code Mode 内置扩展。</text></svg><figcaption>v0.9.4 的职责分层</figcaption></figure>
-<p>一个容易忽略的细节：真正的循环在 <strong><code>packages/ai/src/agent/agent-loop.ts</code></strong>。有状态 <code>Agent</code> 在 <code>packages/agent/src/agent.ts</code>，接收 <code>AgentTransport</code>，通过 <code>transport.run(...)</code> 遍历事件。编码应用负责把这些模块装配起来。<a href="#s3">S3</a>、<a href="#s4">S4</a></p>
+<p>真正的循环在 <strong><code>packages/ai/src/agent/agent-loop.ts</code></strong>。有状态 <code>Agent</code> 在 <code>packages/agent/src/agent.ts</code>，接收 <code>AgentTransport</code>，通过 <code>transport.run(...)</code> 遍历事件。编码应用负责把这些模块装配起来。<a href="#s3">S3</a>、<a href="#s4">S4</a></p>
 <h3>跟着一次请求走</h3>
 <p>假设你说：“读 package.json，告诉我包名。”</p>
 <p>Agent 构造用户消息，把应用消息转换成模型能理解的消息，再交给 transport。循环接收模型流式响应。如果响应中包含 <code>read</code> 调用，就按名称查找工具、校验参数、执行 <code>execute()</code>，把结果变成 <code>toolResult</code> 加入上下文，再请求模型给出答案。</p>
@@ -275,15 +275,15 @@ blockquote{margin:24px 0;border-left:3px solid var(--brand);padding:1px 20px;col
 <p>这里有两个历史事实。第一，<strong>工具参数校验早就存在</strong>，不能把它算作 Code Mode 才带来的能力。第二，旧循环通过带 <code>await</code> 的 <code>for...of</code> 逐个执行工具；当前 Agent 支持同一响应中的多个调用并行执行。<a href="#s4">S4</a>、<a href="#s6">S6</a></p>
 <h3>状态分别放在哪里</h3>
 <p>Agent 维护消息、当前模型、流式状态、待执行调用 ID 和消息队列。消息转换器负责把附件等应用数据变成模型输入。事件流让 UI 观察 <code>message_start</code>、<code>message_update</code>、<code>message_end</code>、工具执行和回合边界。</p>
-<p>旧 <code>SessionManager</code> 使用 JSONL，保存会话头、消息、模型变更和思考等级变更。条目没有当前的 <code>id</code> / <code>parentId</code> 树形链接。<code>createBranchedSession()</code> 会新建文件，把分支点之前的消息复制过去。因此旧版<strong>不是没有分支</strong>，而是“复制历史到新文件”，不同于当前在一个文件中切换树形分支。<a href="#s5">S5</a></p>
+<p>旧 <code>SessionManager</code> 使用 JSONL，保存会话头、消息、模型变更和思考等级变更。条目没有当前的 <code>id</code> / <code>parentId</code> 树形链接。<code>createBranchedSession()</code> 会新建文件，把分支点之前的消息复制过去。所以旧版<strong>并非没有分支</strong>，只是把历史复制到新文件，不同于当前在一个文件中切换树形分支。<a href="#s5">S5</a></p>
 <h3>那时还没有什么</h3>
 <p>该标签没有当前这一套内置 Code Mode、MCP、tool search 组合，也没有后来统一的扩展系统。仓库还包含 <code>mom</code>、<code>web-ui</code>、<code>pods</code>、<code>proxy</code> 等应用或配套模块。说明多界面复用从早期就重要，但不意味着这些目录现在仍原封不动地存在。</p>
 <p><strong>练习：</strong> Anthropic 流式事件归一化应该放哪里？模型接入层。重画终端一行放哪里？TUI。判断是否继续下一轮模型请求放哪里？Agent 循环。文件位置虽变，职责判断仍然有效。</p>
 <h1 id="chapter-3">第 3 章：当前架构，分清 CLI 与独立基础库</h1>
 <p><strong>本章目标：看到整张地图，但不把相邻模块当作同一条执行链。</strong></p>
-<p>v1.4.0 的 CLI 仍建立在有状态 <code>Agent</code> 上，不过循环已经和 Agent 放到一起：<strong><code>packages/agent/src/agent-loop.ts</code></strong>。编码应用层提供 <code>AgentSession</code>、会话持久化、上下文投影、资源加载、扩展、模型运行时和不同交互接口。<a href="#s6">S6</a>、<a href="#s7">S7</a></p>
+<p>v1.4.0 的 CLI 仍建立在有状态 <code>Agent</code> 上，不过循环已经并入 Agent 所在的包：<strong><code>packages/agent/src/agent-loop.ts</code></strong>。编码应用层提供 <code>AgentSession</code>、会话持久化、上下文投影、资源加载、扩展、模型运行时和不同交互接口。<a href="#s6">S6</a>、<a href="#s7">S7</a></p>
 <figure><svg style="font-family:Noto Sans CJK SC,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" role="img" aria-labelledby="current-stack-title current-stack-desc"><title id="current-stack-title">普通 CLI 的运行时地图</title><desc id="current-stack-desc">接口进入 AgentSession，后者使用树形会话、Agent 循环和扩展工具，Code Mode 是工具侧编排层。</desc><defs><marker id="current-stack-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#1B365D"/></marker></defs><rect width="960" height="540" fill="#faf9f5"/><path d="M480 112 V148" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#current-stack-arrow)"/><path d="M360 192 H280" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#current-stack-arrow)"/><path d="M600 192 H680" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#current-stack-arrow)"/><path d="M420 236 V248 Q420 256 412 256 H248 Q240 256 240 264 V276" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#current-stack-arrow)"/><path d="M540 236 V248 Q540 256 548 256 H712 Q720 256 720 264 V276" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#current-stack-arrow)"/><path d="M240 364 V404" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#current-stack-arrow)"/><path d="M720 364 V404" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#current-stack-arrow)"/><rect x="360" y="24" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="480.0" y="54" text-anchor="middle" font-size="20" fill="#20201d">TUI / JSON / RPC</text><text x="480.0" y="97" text-anchor="middle" font-size="15" fill="#6b6a64">或应用内 SDK</text><rect x="360" y="148" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="480.0" y="178" text-anchor="middle" font-size="20" fill="#20201d">AgentSession</text><text x="480.0" y="221" text-anchor="middle" font-size="15" fill="#6b6a64">上下文、队列、扩展生命周期</text><rect x="40" y="148" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="160.0" y="178" text-anchor="middle" font-size="20" fill="#20201d">SessionManager</text><text x="160.0" y="221" text-anchor="middle" font-size="15" fill="#6b6a64">活动分支、压缩、投影</text><rect x="680" y="148" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="800.0" y="178" text-anchor="middle" font-size="20" fill="#20201d">资源与模型运行时</text><text x="800.0" y="221" text-anchor="middle" font-size="15" fill="#6b6a64">设置、skills、providers</text><rect x="120" y="276" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="240.0" y="306" text-anchor="middle" font-size="20" fill="#20201d">Agent 循环</text><text x="240.0" y="349" text-anchor="middle" font-size="15" fill="#6b6a64">packages/agent</text><rect x="600" y="276" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="720.0" y="306" text-anchor="middle" font-size="20" fill="#20201d">工具执行管线</text><text x="720.0" y="349" text-anchor="middle" font-size="15" fill="#6b6a64">校验与扩展钩子</text><rect x="120" y="404" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="240.0" y="434" text-anchor="middle" font-size="20" fill="#20201d">模型提供商</text><text x="240.0" y="477" text-anchor="middle" font-size="15" fill="#6b6a64">packages/ai</text><rect x="600" y="404" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="720.0" y="434" text-anchor="middle" font-size="20" fill="#20201d">Code Mode / MCP</text><text x="720.0" y="477" text-anchor="middle" font-size="15" fill="#6b6a64">内置扩展及独立库</text></svg><figcaption>当前普通 CLI 的运行时职责图</figcaption></figure>
-<p>这张图是职责图，不是完整 npm 依赖图。Code Mode 和 MCP 通过 CLI 的内置扩展接入，没有替换 Agent 或模型接入层。</p>
+<p>这张图表达的是职责划分，不是完整的 npm 依赖图。Code Mode 和 MCP 通过 CLI 的内置扩展接入，没有替换 Agent 或模型接入层。</p>
 <h3>每个包负责什么</h3>
 <table>
 <thead>
@@ -351,14 +351,14 @@ blockquote{margin:24px 0;border-left:3px solid var(--brand);padding:1px 20px;col
 </tr>
 </tbody>
 </table>
-<p>这些关系以固定版本的 <code>package.json</code> 为依据。根 README 的包表不是完整目录清单，部分新包未列入；反过来，仓库里有一个包，也不意味着 CLI 依赖它。确认依赖关系时，优先看 <code>coding-agent/package.json</code>。<a href="#s8">S8</a></p>
+<p>这些关系依据固定版本的 <code>package.json</code> 确认。根 README 的包表不是完整目录清单，部分新包未列入；反过来，仓库里存在某个包，也不意味着 CLI 依赖它。确认依赖关系时，优先查看 <code>coding-agent/package.json</code>。<a href="#s8">S8</a></p>
 <figure><svg style="font-family:Noto Sans CJK SC,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 652" role="img" aria-labelledby="cli-package-dependencies-title cli-package-dependencies-desc"><title id="cli-package-dependencies-title">普通 CLI 的实际内部包依赖</title><desc id="cli-package-dependencies-desc">coding-agent 直接依赖 agent-core、ai、tui、codemode、mcp；agent-core 继续依赖 ai。此图不把 Durable 或 chord 放进 CLI 依赖链。</desc><defs><marker id="cli-package-dependencies-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#1B365D"/></marker></defs><rect width="960" height="652" fill="#faf9f5"/><path d="M280 260 H332 Q340 260 340 252 V72 Q340 64 348 64 H600" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#cli-package-dependencies-arrow)"/><path d="M280 280 H372 Q380 280 380 272 V192 Q380 184 388 184 H600" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#cli-package-dependencies-arrow)"/><path d="M280 304 H600" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#cli-package-dependencies-arrow)"/><path d="M280 328 H452 Q460 328 460 336 V416 Q460 424 468 424 H600" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#cli-package-dependencies-arrow)"/><path d="M280 348 H412 Q420 348 420 356 V536 Q420 544 428 544 H600" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#cli-package-dependencies-arrow)"/><path d="M850 140 V108" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#cli-package-dependencies-arrow)"/><rect x="40" y="244" width="240" height="120" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="160.0" y="274" text-anchor="middle" font-size="20" fill="#20201d">coding-agent</text><text x="160.0" y="349" text-anchor="middle" font-size="15" fill="#6b6a64">普通 CLI / SDK</text><rect x="600" y="20" width="300" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="750.0" y="50" text-anchor="middle" font-size="20" fill="#20201d">ai</text><text x="750.0" y="93" text-anchor="middle" font-size="15" fill="#6b6a64">模型接入</text><rect x="600" y="140" width="300" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="750.0" y="170" text-anchor="middle" font-size="20" fill="#20201d">agent-core</text><text x="750.0" y="213" text-anchor="middle" font-size="15" fill="#6b6a64">Agent 与循环</text><rect x="600" y="260" width="300" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="750.0" y="290" text-anchor="middle" font-size="20" fill="#20201d">tui</text><text x="750.0" y="333" text-anchor="middle" font-size="15" fill="#6b6a64">终端渲染</text><rect x="600" y="380" width="300" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="750.0" y="410" text-anchor="middle" font-size="20" fill="#20201d">codemode</text><text x="750.0" y="453" text-anchor="middle" font-size="15" fill="#6b6a64">独立沙箱库</text><rect x="600" y="500" width="300" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="750.0" y="530" text-anchor="middle" font-size="20" fill="#20201d">mcp</text><text x="750.0" y="573" text-anchor="middle" font-size="15" fill="#6b6a64">独立协议客户端</text><text x="40" y="620" font-size="18" fill="#6b6a64">箭头表示直接内部依赖，省略第三方依赖；ai 还使用 telemetry。依据固定版本 package.json。</text></svg><figcaption>普通 CLI 的实际内部包依赖：箭头表示直接依赖，不是请求执行顺序</figcaption></figure>
 <p>上图专门回答“安装和维护普通 CLI 时，哪些内部包需要一起保持版本一致”。不要将它与上一张运行时职责图的调用方向混读，也不要因为仓库有 Durable，就把 Durable 画成 CLI 的必经内核。</p>
 <h3>用三个边界理解后面的所有章节</h3>
 <p><strong>推理边界：</strong> 模型决定目标、调用和代码；Code Mode 中的常规循环、条件、聚合由 JavaScript 执行，不必每个中间结果都重新问模型。</p>
 <p><strong>上下文边界：</strong> harness 决定下一次模型请求看到什么。磁盘历史、UI 展示、嵌套调用记录和模型上下文不是同一份东西。</p>
 <p><strong>能力边界：</strong> 脚本只能调用注入的能力，但注入的 shell 工具可能拥有 Pi 进程的全部权限。JavaScript 沙箱不等于 shell 的文件系统沙箱。</p>
-<p>后面的章节沿着这三个边界展开。它们比记忆一串类名更能解释设计为什么这样变化。</p>
+<p>后面的章节沿着这三个边界展开。比起记住一串类名，这样更容易解释设计为什么发生这些变化。</p>
 <h1 id="chapter-4">第 4 章：一次请求的完整生命周期</h1>
 <p><strong>本章目标：区分消息流、持久历史和模型输入。</strong></p>
 <p>理解新版最有效的路线不是先读所有类，而是跟一条请求走到底。</p>
@@ -374,7 +374,7 @@ blockquote{margin:24px 0;border-left:3px solid var(--brand);padding:1px 20px;col
 <figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" role="img" aria-labelledby="request-sequence-title request-sequence-desc" style="font-family:Noto Sans CJK SC,system-ui,sans-serif"><title id="request-sequence-title">一次 Code Mode 请求</title><desc id="request-sequence-desc">模型请求脚本，脚本经宿主工具管线调用真实工具，结果回给脚本筛选，再向模型返回摘要。</desc><defs><marker id="request-sequence-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#1B365D"/></marker></defs><rect width="960" height="640" fill="#faf9f5"/><rect x="10" y="24" width="180" height="56" rx="6" fill="none" stroke="#1B365D"/><text x="100" y="59" text-anchor="middle" font-size="19">模型</text><path d="M100 80 V610" stroke="#6b6a64" stroke-dasharray="5 5" fill="none"/><rect x="260" y="24" width="180" height="56" rx="6" fill="none" stroke="#1B365D"/><text x="350" y="59" text-anchor="middle" font-size="19">AgentSession</text><path d="M350 80 V610" stroke="#6b6a64" stroke-dasharray="5 5" fill="none"/><rect x="510" y="24" width="180" height="56" rx="6" fill="none" stroke="#1B365D"/><text x="600" y="59" text-anchor="middle" font-size="19">QuickJS 脚本</text><path d="M600 80 V610" stroke="#6b6a64" stroke-dasharray="5 5" fill="none"/><rect x="760" y="24" width="180" height="56" rx="6" fill="none" stroke="#1B365D"/><text x="850" y="59" text-anchor="middle" font-size="19">工具管线</text><path d="M850 80 V610" stroke="#6b6a64" stroke-dasharray="5 5" fill="none"/><path d="M100 140 H350" stroke="#1B365D" stroke-width="2"  fill="none" marker-end="url(#request-sequence-arrow)"/><text x="225.0" y="128" text-anchor="middle" font-size="18" fill="#20201d">请求 codemode</text><path d="M350 204 H600" stroke="#1B365D" stroke-width="2"  fill="none" marker-end="url(#request-sequence-arrow)"/><text x="475.0" y="192" text-anchor="middle" font-size="18" fill="#20201d">启动脚本</text><path d="M600 268 H850" stroke="#1B365D" stroke-width="2"  fill="none" marker-end="url(#request-sequence-arrow)"/><text x="725.0" y="256" text-anchor="middle" font-size="18" fill="#20201d">tools.read()</text><path d="M850 332 H600" stroke="#1B365D" stroke-width="2" stroke-dasharray="6 5" fill="none" marker-end="url(#request-sequence-arrow)"/><text x="725.0" y="320" text-anchor="middle" font-size="18" fill="#20201d">原始工具结果</text><path d="M600 396 H350" stroke="#1B365D" stroke-width="2" stroke-dasharray="6 5" fill="none" marker-end="url(#request-sequence-arrow)"/><text x="475.0" y="384" text-anchor="middle" font-size="18" fill="#20201d">text(选定字段)</text><path d="M350 460 H100" stroke="#1B365D" stroke-width="2" stroke-dasharray="6 5" fill="none" marker-end="url(#request-sequence-arrow)"/><text x="225.0" y="448" text-anchor="middle" font-size="18" fill="#20201d">外层工具结果</text><path d="M100 540 H350" stroke="#1B365D" stroke-width="2"  fill="none" marker-end="url(#request-sequence-arrow)"/><text x="225.0" y="528" text-anchor="middle" font-size="18" fill="#20201d">下一轮响应</text></svg><figcaption>请求、普通工具和 Code Mode 嵌套调用的时序</figcaption></figure>
 <p>图中省略流式 token 与多轮重试，保留了最重要的边界：<strong>嵌套工具结果先回给脚本，而不是直接变成下一次模型输入。</strong> <a href="#s7">S7</a>、<a href="#s9">S9</a>、<a href="#s10">S10</a></p>
 <h3>同一响应的并行，不等于 Code Mode</h3>
-<p>当前 Agent 的工具执行默认支持并行：先顺序做调用前检查，再并行执行被允许的工具；完成事件按实际完成顺序发出，最终工具结果消息仍按 assistant 源码中的调用顺序落入历史。需要共享状态的工具可使用顺序执行方式。<a href="#s6">S6</a></p>
+<p>当前 Agent 的工具执行默认支持并行：先按顺序做调用前检查，再并行执行被允许的工具；完成事件按实际完成顺序发出，最终的工具结果消息仍按 assistant 源码中的调用顺序写入历史。需要共享状态的工具可以选择顺序执行。<a href="#s6">S6</a></p>
 <p>这意味着：模型在一个响应里同时请求三次 <code>read</code>，不使用 Code Mode 也可能并行。Code Mode 多出的价值是<strong>在一个脚本中表达依赖、分支、过滤与聚合</strong>，并控制哪些结果跨回模型边界，而不只是“把串行变成并行”。</p>
 <h3>三种历史不要混淆</h3>
 <table>
@@ -408,25 +408,25 @@ blockquote{margin:24px 0;border-left:3px solid var(--brand);padding:1px 20px;col
 <p>默认压缩阈值的概念是：</p>
 <pre><code class="language-text">contextTokens &gt; contextWindow - reserveTokens
 </code></pre>
-<p>Code Mode 是<strong>在信息进入模型之前做减量</strong>；压缩是在上下文已经积累后，把早期内容总结成摘要。前者不能替代后者。普通工具调用也可以先截断输出；Code Mode 更适合按数据含义做结构化筛选。<a href="#s12">S12</a></p>
+<p>Code Mode <strong>在信息进入模型之前就做减量</strong>；压缩则是在上下文已经积累后，把早期内容总结成摘要。前者不能替代后者。普通工具调用也可以先截断输出；Code Mode 更适合按数据含义做结构化筛选。<a href="#s12">S12</a></p>
 <p>例如运行测试得到很长日志。工具截断保留头尾，不知道你只关心三个失败断言；脚本可从结构化结果中选出失败项，再让模型理解原因。但如果你把全部日志 <code>text()</code> 出去，就没有获得这部分上下文收益。</p>
 <h3>v1.4.0：何时压缩，与摘要能输出多长是两回事</h3>
-<p><code>compaction.reserveTokens</code> 仍决定自动压缩何时开始，不再给摘要请求套一个按它计算的固定输出帽子。v1.3.0 的主摘要曾取 <code>floor(0.8 × reserveTokens)</code> 与模型输出上限中的较小者；推理内容吃掉额度时，正文摘要可能尚未完成就结束。v1.4.0 改用模型输出上限，并在必要时为输入与输出共同适配上下文窗口。因此“移除固定帽子”不表示无限输出，也不表示摘要一定成功。<a href="#s12">S12</a>、<a href="#s28">S28</a></p>
-<p>用教学数值手算：上下文窗口 128,000，预留 16,384，则超过 111,616 时触发自动压缩；旧主摘要的比例帽子约为 13,107。新版不会因为相同预留值，就把摘要仍固定限制在 13,107。扩大预留值主要让压缩更早发生，不应继续用它间接调整摘要长度。</p>
+<p><code>compaction.reserveTokens</code> 仍决定自动压缩何时开始，但不再按它为摘要请求算一个固定输出上限。v1.3.0 的主摘要曾取 <code>floor(0.8 × reserveTokens)</code> 与模型输出上限中的较小者；当推理内容占用额度时，正文摘要可能还没写完就结束了。v1.4.0 改用模型输出上限，并在必要时让输入与输出共同适配上下文窗口。所以“移除固定上限”不表示输出无限，也不表示摘要一定成功。<a href="#s12">S12</a>、<a href="#s28">S28</a></p>
+<p>用教学数值手算：上下文窗口 128,000，预留 16,384，则超过 111,616 时触发自动压缩；旧主摘要按比例算出的上限约为 13,107。新版不会因为预留值相同，就把摘要仍然限制在 13,107。扩大预留值主要让压缩更早发生，不应再用它间接调整摘要长度。</p>
 <p>分支总结也采用新输出预算。导出的 <code>generateSummary()</code> 和 <code>generateSummaryWithUsage()</code> 为兼容旧调用保留参数位置，但忽略原来的 <code>reserveTokens</code> 参数；维护自定义调用时要重新核对意图。<code>/compact 保留未解决问题</code> 之类指令也会传给被切开的回合前缀摘要，修复了此前这部分忽略指令的问题。</p>
 <h3>v1.4.0：截断恢复后，工具消息仍要成对</h3>
 <p>模型在输出上限处被截断，可能留下不完整的工具调用。历史转换不能只丢掉调用请求，却把对应工具结果交给下一轮 provider；孤立结果会使后续请求持续被拒绝。v1.4.0 修复了这条恢复路径。此处说的是模型响应截断后的协议一致性，不是工具长输出被截断后的 JSON 解析问题。<a href="#s2">S2</a></p>
 <h3>什么时候才算真的结束</h3>
-<p>SDK 的 <code>agent_end</code> 只代表一次底层 Agent 运行结束，随后还可能发生自动恢复、重试或排队工作。集成程序要确认 Pi 不再自动继续，应关注 <strong><code>agent_settled</code></strong>。把两者当成同一个事件，会导致 UI 过早解除忙碌状态或脚本过早退出。<a href="#s9">S9</a></p>
+<p>SDK 的 <code>agent_end</code> 只代表一次底层 Agent 运行结束，之后还可能发生自动恢复、重试或排队工作。集成程序要确认 Pi 不再自动继续，应该关注 <strong><code>agent_settled</code></strong>。把两者当成同一个事件，会导致 UI 过早解除忙碌状态，或者脚本过早退出。<a href="#s9">S9</a></p>
 <p><strong>理解检查：</strong> 从树中切回旧节点，会不会回滚已经写入的文件？不会。会话分支描述对话历史，不是文件系统快照。</p>
 <h1 id="chapter-5">第 5 章：Code Mode 到底改变了什么</h1>
 <p><strong>本章目标：能用一句话解释它，并知道何时不该使用。</strong></p>
-<p>一句话：<strong>让模型写一段调用工具的 JavaScript，常规编排在脚本中完成，只把主动输出的内容交还模型。</strong></p>
+<p><strong>让模型写一段调用工具的 JavaScript，常规编排在脚本中完成，只把主动输出的内容交还模型。</strong></p>
 <p>普通工具模式下，工具编排分散在 assistant 的工具请求及其后续模型响应中。Code Mode 把部分编排移到程序执行侧，模型看到一个外层 <code>codemode</code> 调用，脚本内部可以调用很多工具。底层工具仍然是真实工具。<a href="#s10">S10</a></p>
 <figure><svg style="font-family:Noto Sans CJK SC,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 456" role="img" aria-labelledby="information-flow-title information-flow-desc"><title id="information-flow-title">把信息处理移到执行侧</title><desc id="information-flow-desc">普通工具结果直接供模型理解；Code Mode 在执行侧组合并筛选，只交回选中输出。</desc><defs><marker id="information-flow-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#1B365D"/></marker></defs><rect width="960" height="456" fill="#faf9f5"/><path d="M210 120 H270" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#information-flow-arrow)"/><path d="M450 120 H510" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#information-flow-arrow)"/><path d="M690 120 H750" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#information-flow-arrow)"/><path d="M180 344 H210" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#information-flow-arrow)"/><path d="M370 344 H400" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#information-flow-arrow)"/><path d="M560 344 H590" fill="none" stroke="#1B365D" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#information-flow-arrow)"/><path d="M750 344 H780" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#information-flow-arrow)"/><rect x="30" y="76" width="180" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="120.0" y="106" text-anchor="middle" font-size="20" fill="#20201d">模型选择工具</text><rect x="270" y="76" width="180" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="360.0" y="106" text-anchor="middle" font-size="20" fill="#20201d">真实工具</text><rect x="510" y="76" width="180" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="600.0" y="106" text-anchor="middle" font-size="20" fill="#20201d">原始结果</text><rect x="750" y="76" width="180" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="840.0" y="106" text-anchor="middle" font-size="20" fill="#20201d">模型筛选</text><rect x="20" y="300" width="160" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="100.0" y="330" text-anchor="middle" font-size="20" fill="#20201d">模型写脚本</text><rect x="210" y="300" width="160" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="290.0" y="330" text-anchor="middle" font-size="20" fill="#20201d">脚本发调用</text><rect x="400" y="300" width="160" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="480.0" y="330" text-anchor="middle" font-size="20" fill="#20201d">真实工具</text><rect x="590" y="300" width="160" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="670.0" y="330" text-anchor="middle" font-size="20" fill="#20201d">脚本筛选</text><rect x="780" y="300" width="160" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="860.0" y="330" text-anchor="middle" font-size="20" fill="#20201d">模型读摘要</text><text x="30" y="40" font-size="18" fill="#6b6a64">普通调用：结果进入模型后，由模型理解与挑选</text><text x="30" y="260" font-size="18" fill="#6b6a64">Code Mode：保留原始数据在执行侧，选中输出才进入模型</text><text x="30" y="436" font-size="18" fill="#6b6a64">两种方式都可以并行；区别主要是控制流与信息跨界的位置。</text></svg><figcaption>普通工具与 Code Mode 的信息流比较</figcaption></figure>
 <h3>一个具体任务：检查三个 package.json</h3>
 <p>需求：“读取根目录、api 和 web 的 package.json，只告诉我包名与 scripts 里有没有 test。”</p>
-<p>不用 Code Mode，模型可以请求三次 <code>read</code>，收下三个完整文件，再挑选字段。它也可以请求 shell 直接聚合，或调用专门工具。Code Mode 不是唯一能做聚合的办法。</p>
+<p>不用 Code Mode，模型可以请求三次 <code>read</code>，收下三个完整文件，再挑选字段；也可以请求 shell 直接聚合，或调用专门工具。Code Mode 不是唯一能做聚合的办法。</p>
 <p>使用 Code Mode，可以表达为：</p>
 <pre><code class="language-js">const paths = [
   &quot;package.json&quot;,
@@ -453,7 +453,7 @@ text(results.map((r, i) =&gt; r.status === &quot;fulfilled&quot;
   : { path: paths[i], error: String(r.reason) }
 ));
 </code></pre>
-<p><code>Promise.allSettled()</code> 让失败和成功一起交给后续逻辑。它不是“忽略错误”，而是把错误变成你必须检查的数据。并发的调用必须互不依赖；不能把“写文件”和“马上读取刚写的文件”随意放在同一个并发数组里。</p>
+<p><code>Promise.allSettled()</code> 让失败和成功一起交给后续逻辑。它不是“忽略错误”，而是把错误变成你必须检查的数据。并发调用之间必须互不依赖，不能把“写文件”和“马上读取刚写的文件”随意放进同一个并发数组。</p>
 <h3>上下文收益怎么估算</h3>
 <p>下面只是示意，不是 Pi 性能测试。设有 N 个独立调用，每个原始结果 R 个字符，最终每项只需要 S 个字符。</p>
 <pre><code class="language-text">全部原样返回：约 N × R
@@ -489,7 +489,7 @@ text(results.map((r, i) =&gt; r.status === &quot;fulfilled&quot;
 <p>在 v1.4.0 的 <code>execute.ts</code> 中，关键语句仍是：</p>
 <pre><code class="language-ts">const outcome = await ctx.executeTool(tool.name, args, { signal: callSignal });
 </code></pre>
-<p>它解释了为什么“脚本里的工具调用”不是偷偷绕过工具链直接执行函数。已有扩展实现的拦截与权限确认仍可以生效。不过 Pi <strong>没有默认对每次调用逐一确认的内置权限系统</strong>；这里说的是扩展钩子可以执行权限策略，不是默认已经有一层强制审批。<a href="#s14">S14</a>、<a href="#s15">S15</a>、<a href="#s25">S25</a></p>
+<p>它解释了为什么“脚本里的工具调用”不是绕开工具链直接执行函数。已有扩展实现的拦截与权限确认仍然可以生效。不过 Pi <strong>没有内置一套对每次调用逐一确认的默认权限系统</strong>；这里说的是扩展钩子可以执行权限策略，不是默认已经有一层强制审批。<a href="#s14">S14</a>、<a href="#s15">S15</a>、<a href="#s25">S25</a></p>
 <h3>为什么不用 Node 的 eval</h3>
 <p>脚本里没有 Node API、文件系统、网络、模块加载和定时器。不能直接使用 <code>process</code>、<code>require</code>、<code>fetch</code> 或 <code>setTimeout</code>，需要访问外部世界就通过注入工具。<code>eval</code> / <code>Function</code> 即使存在，也只能在同一个 VM 里生成更多代码，不凭空获得宿主能力。</p>
 <p>QuickJS 是解释器，编译为 WebAssembly 后运行在 worker。worker 避免一段同步死循环卡住 Pi 主线程；WASM 实例分离 VM 内存；能力注入限制脚本可以接触的接口。这是分层设计，不是一句“用了沙箱所以绝对安全”。</p>
@@ -532,16 +532,16 @@ text(results.map((r, i) =&gt; r.status === &quot;fulfilled&quot;
 </tr>
 </tbody>
 </table>
-<p>不要混用这些限额。256 MiB 是 CLI 集成选择，不是所有独立沙箱部署的通用默认；Cloudflare 默认限制又不同。外层输出 token 预算也不是 VM 内存限制。<a href="#s10">S10</a>、<a href="#s13">S13</a></p>
+<p>这些限额不能混用。256 MiB 是 CLI 集成的选择，不是所有独立沙箱部署的通用默认；Cloudflare 默认限制又不同。外层输出 token 预算也不是 VM 内存限制。<a href="#s10">S10</a>、<a href="#s13">S13</a></p>
 <h3>一个危险的误解</h3>
 <pre><code class="language-js">await tools.bash({ command: &quot;某个有破坏性的命令&quot; });
 </code></pre>
-<p>命令执行在工具能力背后，能接触什么取决于 Pi 进程或工具专属容器，不取决于 QuickJS 是否能直接读文件。需要强隔离时，限制容器挂载、网络、账户和凭据；只限制 JavaScript 全局变量远远不够。</p>
+<p>命令执行发生在工具能力背后，能接触什么取决于 Pi 进程或工具专属容器，不取决于 QuickJS 是否能直接读文件。需要强隔离时，应限制容器挂载、网络、账户和凭据；只限制 JavaScript 全局变量远远不够。</p>
 <p><strong>源码阅读顺序：</strong> <code>tool.ts</code> → <code>execute.ts</code> → <code>codemode/src/runtime/host.ts</code> → <code>worker.ts</code> → <code>vm.ts</code> → <code>prelude-source.ts</code>。先沿着一次调用走通，再研究声明生成和模型辅助接口。</p>
 <h1 id="chapter-7">第 7 章：工具太多时，怎样发现而不塞满提示</h1>
 <p><strong>本章目标：分清“注册”“向模型声明”和“可被脚本调用”。</strong></p>
-<p>过去常见的思路是：把所有工具的名称、说明、参数 schema 放进模型请求。工具很少时直观；几十个服务、几百个工具时，就会扩大提示、干扰选择，还容易让工具集变化影响缓存。</p>
-<p>当前 Pi 把几件事拆开：工具可以已注册，却不直接声明给模型；可以供脚本调用，却不在 Code Mode 说明里列出；也可以按需搜索后再声明。<strong>不可见不等于不可用，不可见更不等于已撤销权限。</strong> <a href="#s16">S16</a>、<a href="#s17">S17</a></p>
+<p>常见思路是把所有工具的名称、说明和参数 schema 都放进模型请求。工具少时这样做很直观；但面对几十个服务、几百个工具，它会撑大提示、干扰模型选择，工具集的变动还会波及缓存。</p>
+<p>Pi 把这几件事拆开了：工具可以已注册却不直接声明给模型，可以供脚本调用却不出现在 Code Mode 说明里，也可以按需搜索后再声明。<strong>不可见不等于不可用，也不等于权限已被撤销。</strong> <a href="#s16">S16</a>、<a href="#s17">S17</a></p>
 <figure><svg style="font-family:Noto Sans CJK SC,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 500" role="img" aria-labelledby="discovery-title discovery-desc"><title id="discovery-title">工具发现的三条路径</title><desc id="discovery-desc">注册表中的工具可直接声明、经脚本发现调用，或由 tool_search 声明后直接调用；hidden 工具不可达。</desc><defs><marker id="discovery-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#1B365D"/></marker></defs><rect width="960" height="500" fill="#faf9f5"/><path d="M420 118 V140 Q420 148 412 148 H168 Q160 148 160 156 V190" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#discovery-arrow)"/><path d="M480 118 V190" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#discovery-arrow)"/><path d="M540 118 V140 Q540 148 548 148 H792 Q800 148 800 156 V190" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#discovery-arrow)"/><path d="M160 278 V350" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#discovery-arrow)"/><path d="M480 278 V350" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#discovery-arrow)"/><path d="M800 278 V350" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#discovery-arrow)"/><rect x="360" y="30" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="480.0" y="60" text-anchor="middle" font-size="20" fill="#20201d">工具注册与 exposure</text><text x="480.0" y="103" text-anchor="middle" font-size="15" fill="#6b6a64">不是全部塞入提示</text><rect x="40" y="190" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="160.0" y="220" text-anchor="middle" font-size="20" fill="#20201d">direct</text><text x="160.0" y="263" text-anchor="middle" font-size="15" fill="#6b6a64">模型直接可见</text><rect x="360" y="190" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="480.0" y="220" text-anchor="middle" font-size="20" fill="#20201d">codemode</text><text x="480.0" y="263" text-anchor="middle" font-size="15" fill="#6b6a64">脚本发现后调用</text><rect x="680" y="190" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="800.0" y="220" text-anchor="middle" font-size="20" fill="#20201d">deferred</text><text x="800.0" y="263" text-anchor="middle" font-size="15" fill="#6b6a64">按需加载声明</text><rect x="40" y="350" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="160.0" y="380" text-anchor="middle" font-size="20" fill="#20201d">普通工具调用</text><rect x="360" y="350" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="480.0" y="380" text-anchor="middle" font-size="20" fill="#20201d">searchTools / describe</text><text x="480.0" y="423" text-anchor="middle" font-size="15" fill="#6b6a64">结果先返回脚本</text><rect x="680" y="350" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="800.0" y="380" text-anchor="middle" font-size="20" fill="#20201d">tool_search</text><text x="800.0" y="423" text-anchor="middle" font-size="15" fill="#6b6a64">下一请求可直接调用</text><text x="40" y="478" font-size="18" fill="#6b6a64">MCP 的 codemode 与 deferred 都可被脚本调用；hidden 在两条间接路径中也不可达。</text></svg><figcaption>直接声明、脚本发现和工具搜索三条路径</figcaption></figure>
 <h3>MCP 的四种 exposure</h3>
 <table>
@@ -591,31 +591,31 @@ text(hits);
 <li><code>describeTool(name)</code>：获得某个工具的说明与 TypeScript 声明。</li>
 <li><code>describeNamespace(name)</code>：读某个命名空间的指令和工具信息。</li>
 </ul>
-<p>三个查询 helper 都是异步接口，必须 <code>await</code>。BM25 是文本检索，不是理解整个业务的语义代理；搜索词和工具说明的质量会影响结果。发现后应确认参数，不能猜一个名字就调用。<a href="#s10">S10</a></p>
+<p>三个查询 helper 都是异步接口，调用时必须 <code>await</code>。BM25 做的是文本检索，并不理解业务语义；搜索词和工具说明写得如何，会直接影响结果质量。发现之后要先确认参数，不能猜个名字就直接调用。<a href="#s10">S10</a></p>
 <p>示意流程如下，其中 <code>hits[0]</code> 只是候选，必须读完说明再决定是否合适：</p>
 <pre><code class="language-js">const hits = await searchTools(&quot;read documentation page&quot;, { limit: 3 });
 if (hits.length === 0) return &quot;没有找到候选工具&quot;;
 text(await describeTool(hits[0].name));
 </code></pre>
-<p>发现信息会作为这一轮结果交还模型，下一轮可据此编写准确调用。不是所有发现都必须和执行挤在一个脚本里。</p>
+<p>发现结果会在这一轮交还模型，模型下一轮再据此编写准确的调用。发现和执行不必都挤在同一个脚本里。</p>
 <h3>codemode.mode 的 on 与 only</h3>
-<p><code>on</code> 是默认：已声明工具继续直接可见，并附带脚本调用提示。<code>only</code> 会隐藏那些底层工具的直接声明，将调用入口集中到 Code Mode；可调用集合本身不会因为“隐藏声明”自动消失。</p>
+<p><code>on</code> 是默认模式：已声明的工具继续直接可见，同时附带脚本调用提示。<code>only</code> 则隐藏这些底层工具的直接声明，把调用入口集中到 Code Mode；但可调用的集合本身不会因为声明被隐藏而消失。</p>
 <pre><code class="language-json">{
   &quot;defaultTools&quot;: [&quot;+codemode&quot;],
   &quot;codemode&quot;: { &quot;mode&quot;: &quot;on&quot;, &quot;inlineBudget&quot;: 3000 }
 }
 </code></pre>
-<p><code>inlineBudget</code> 是声明文本的估计 token 预算，约按字符数除以四估算，不是精确分词结果。超过预算的工具由发现接口寻找。当前默认 MCP 工具本来就不逐个写进 Code Mode 描述。<code>only</code> 是呈现和编排策略，不是更强的 OS 沙箱。<a href="#s17">S17</a></p>
+<p><code>inlineBudget</code> 是对声明文本的 token 预算估计，大约按字符数除以四折算，并非精确分词。超出预算的工具交给发现接口查找。当前默认的 MCP 工具本就不会逐个写进 Code Mode 描述。<code>only</code> 属于呈现和编排策略，不提供更强的 OS 沙箱隔离。<a href="#s17">S17</a></p>
 <h3>为什么 MCP 不阻塞每次启动</h3>
-<p>v0.99.2 开始，非 direct 服务器不再阻塞首个 prompt，先在后台连接。到脚本点名某个服务器，或搜索全部工具时，再等待相关连接。当前通过 <code>reachesTools(input)</code> 描述编排器可能触及哪些工具或命名空间；MCP 扩展据此等候必要服务器。搜索目录意味着可能触及全部工具，所以要等待更多服务。<a href="#s2">S2</a>、<a href="#s15">S15</a>、<a href="#s16">S16</a></p>
-<p>这也是 v1.2.0 将 MCP 与 Code Mode 解耦的重要意义：不是 MCP 到处硬编码“识别某个内置实现”，而是利用通用工具契约识别编排器的可达范围。替换同名编排工具时，需要提供相应 <code>reachesTools</code> 契约。</p>
+<p>从 v0.99.2 起，非 direct 服务器不再阻塞首个 prompt，而是先在后台连接；等到脚本点名某个服务器，或需要搜索全部工具时，再等待相关连接完成。当前用 <code>reachesTools(input)</code> 描述编排器可能触及哪些工具或命名空间，MCP 扩展据此等待必要的服务器。搜索整个目录意味着可能触及全部工具，所以要等更多服务就绪。<a href="#s2">S2</a>、<a href="#s15">S15</a>、<a href="#s16">S16</a></p>
+<p>v1.2.0 将 MCP 与 Code Mode 解耦，意义也在这里：MCP 不再到处硬编码去“识别某个内置实现”，而是通过通用工具契约判断编排器的可达范围。替换同名编排工具时，需要一并提供相应的 <code>reachesTools</code> 契约。</p>
 <h3>一个容易造成权限误判的 CLI 细节</h3>
 <pre><code class="language-sh">pi --tools read,codemode
 </code></pre>
-<p>在当前版，这<strong>不会自动删除 MCP 工具</strong>；它们仍可能被脚本调用。要去掉 MCP，可以用 <code>--no-mcp</code>；按 MCP 名称筛选时，使用 <code>mcp__</code> 模式；排除工具则用 <code>--exclude-tools</code>。不要把 allowlist 的表面阅读当成完整权限审计。<a href="#s16">S16</a>、<a href="#s19">S19</a></p>
+<p>在当前版本中，这条命令<strong>不会自动删除 MCP 工具</strong>，它们仍可能被脚本调用。要去掉 MCP，用 <code>--no-mcp</code>；按 MCP 名称筛选用 <code>mcp__</code> 模式；排除工具用 <code>--exclude-tools</code>。不能只读 allowlist 的表面含义，就当成完整的权限审计。<a href="#s16">S16</a>、<a href="#s19">S19</a></p>
 <h1 id="chapter-8">第 8 章：结果、失败、并发与状态</h1>
 <p><strong>本章目标：写出在真实失败中仍然可理解的脚本。</strong></p>
-<p>Code Mode 最容易写错的不是语法，而是返回值和失败契约。不要假定“所有调用都返回字符串”，也不要假定“失败都会 throw”。</p>
+<p>Code Mode 最容易写错的地方在返回值和失败契约，而不是语法。不要假定所有调用都返回字符串，也不要假定失败一定以 throw 的形式出现。</p>
 <h3>三种常见结果</h3>
 <table>
 <thead>
@@ -643,7 +643,7 @@ text(await describeTool(hits[0].name));
 </tr>
 </tbody>
 </table>
-<p>声明了 output schema 的工具可将结构化值交给脚本，包括携带结构化值的错误结果。校验失败、被拦截、无对应数据的执行异常等可以 reject。MCP 保留完整结果对象，因此 <code>isError</code> 必须显式检查。实际以发现返回的声明和该工具契约为准。<a href="#s10">S10</a>、<a href="#s14">S14</a>、<a href="#s16">S16</a></p>
+<p>声明了 output schema 的工具可以把结构化值交给脚本，错误结果也可能携带结构化值。校验失败、被拦截、没有对应数据等执行异常可以 reject。MCP 会保留完整的结果对象，所以 <code>isError</code> 必须显式检查。最终以发现接口返回的声明和该工具的契约为准。<a href="#s10">S10</a>、<a href="#s14">S14</a>、<a href="#s16">S16</a></p>
 <pre><code class="language-js">const result = await tools.bash({ command: &quot;npm test&quot; });
 if (result.exit_code !== 0) {
   text({ passed: false, tail: result.output.slice(-4000) });
@@ -658,8 +658,8 @@ if (result.isError) throw new Error(JSON.stringify(result.content));
 text(result.structuredContent ?? result.content);
 </code></pre>
 <h3>两个层次的成功</h3>
-<p><code>Promise.allSettled()</code> 的 fulfilled 只说明 Promise 没有 reject，不说明 shell 退出码为零，更不说明业务成功。可靠脚本先检查 Promise 状态，再检查结果中的错误标志或退出码。</p>
-<p>同样，独立沙箱 <code>sandbox.execute()</code> 对脚本错误通常返回 <code>{ ok: false, error }</code>，而不是按脚本错误直接 reject。脚本、宿主调用和模型 API 是不同层次，不共享一套错误表示。</p>
+<p><code>Promise.allSettled()</code> 返回 fulfilled，只说明 Promise 没有 reject，既不说明 shell 退出码为零，更不说明业务成功。可靠脚本会先看 Promise 状态，再看结果里的错误标志或退出码。</p>
+<p>类似地，独立沙箱 <code>sandbox.execute()</code> 遇到脚本错误时通常返回 <code>{ ok: false, error }</code>，而不是直接 reject。脚本、宿主调用和模型 API 处在不同层次，错误表示并不通用。</p>
 <h3>await 是生命周期的一部分</h3>
 <pre><code class="language-js">// 错误示例：脚本可能先结束，未完成调用会被取消。
 tools.read({ path: &quot;package.json&quot; });
@@ -669,7 +669,7 @@ return &quot;完成&quot;;
 const source = await tools.read({ path: &quot;package.json&quot; });
 text(JSON.parse(source).name);
 </code></pre>
-<p>脚本结束时，尚未结束的调用会请求取消；已经完成的外部副作用不会回滚。<code>Promise.all()</code> 因一个失败提前 reject，也可能让外层脚本结束，继而取消仍在进行的其他调用。独立读取适合 <code>allSettled()</code>；有依赖的操作按顺序执行。</p>
+<p>脚本结束时，尚未完成的调用会被请求取消；已经完成的外部副作用不会回滚。<code>Promise.all()</code> 因为其中一项失败而提前 reject，也可能让外层脚本结束，进而取消其他仍在进行的调用。彼此独立的读取适合用 <code>allSettled()</code>，有依赖关系的操作则按顺序执行。</p>
 <h3>store 不是数据库事务</h3>
 <p><code>store(key, value)</code> / <code>load(key)</code> 保存小型 JSON 状态。CLI 只有脚本成功后，才把变更追加为 <code>codemode-store</code> 自定义会话条目；恢复和树形分支都只重放当前路径上的状态。单值 JSON 长度上限为 262,144 字符，总量为 1,048,576 字符。<a href="#s10">S10</a>、<a href="#s14">S14</a></p>
 <figure><svg style="font-family:Noto Sans CJK SC,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 468" role="img" aria-labelledby="branch-store-title branch-store-desc"><title id="branch-store-title">状态沿分支重放，外部文件不会回滚</title><desc id="branch-store-desc">从早期节点分叉时不继承另一路上的 store 写入，但文件系统副作用独立于会话分支。</desc><defs><marker id="branch-store-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#1B365D"/></marker></defs><rect width="960" height="468" fill="#faf9f5"/><path d="M280 208 H312 Q320 208 320 200 V116 Q320 108 328 108 H360" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#branch-store-arrow)"/><path d="M280 240 H300 Q308 240 308 248 V324 Q308 332 316 332 H360" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#branch-store-arrow)"/><path d="M600 108 H680" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#branch-store-arrow)"/><path d="M600 332 H680" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#branch-store-arrow)"/><rect x="40" y="176" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="160.0" y="206" text-anchor="middle" font-size="20" fill="#20201d">共同历史</text><text x="160.0" y="249" text-anchor="middle" font-size="15" fill="#6b6a64">store: inspected = 1</text><rect x="360" y="64" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="480.0" y="94" text-anchor="middle" font-size="20" fill="#20201d">分支 A 成功</text><text x="480.0" y="137" text-anchor="middle" font-size="15" fill="#6b6a64">store: inspected = 2</text><rect x="680" y="64" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="800.0" y="94" text-anchor="middle" font-size="20" fill="#20201d">继续 A</text><text x="800.0" y="137" text-anchor="middle" font-size="15" fill="#6b6a64">load 得到 2</text><rect x="360" y="288" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="480.0" y="318" text-anchor="middle" font-size="20" fill="#20201d">分支 B</text><text x="480.0" y="361" text-anchor="middle" font-size="15" fill="#6b6a64">从共同历史分出</text><rect x="680" y="288" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="800.0" y="318" text-anchor="middle" font-size="20" fill="#20201d">继续 B</text><text x="800.0" y="361" text-anchor="middle" font-size="15" fill="#6b6a64">load 得到 1</text><text x="40" y="432" font-size="18" fill="#6b6a64">若 A 已写入外部文件，切回 B 不会把文件恢复到过去。失败脚本不提交 store，但副作用也不撤销。</text></svg><figcaption>分支相对的脚本状态，与外部文件副作用的区别</figcaption></figure>
@@ -677,15 +677,15 @@ text(JSON.parse(source).name);
 store(&quot;inspected&quot;, count);
 text({ count });
 </code></pre>
-<p>如果后面 throw，状态写入不提交；但之前通过 <code>write</code> 修改的文件依旧可能已经变更。所以“失败不提交 store”绝不等于“失败回滚整个脚本”。同样，在分支 A 保存的游标不会自动出现在从早先节点分出的 B，但文件系统仍是共享现实。</p>
+<p>如果脚本后面 throw，状态写入不会提交；但此前通过 <code>write</code> 修改的文件可能已经变更。所以“失败不提交 store”并不等于“失败回滚整个脚本”。同理，在分支 A 保存的游标不会自动出现在从更早节点分出的分支 B 中，而文件系统对两者仍是同一份现实。</p>
 <p>适合存：查询游标、选中的 ID、短摘要。不要存大型日志、图片 base64、完整仓库文件；大数据应由文件或外部服务承载。</p>
 <h3>取消不代表 worker 已经退出</h3>
 <p>CLI 默认最多允许同一 Pi 进程中两个 Code Mode worker 存活，跨会话共享；v1.4.0 可以用环境变量 <code>PI_CODEMODE_MAX_WORKERS</code> 指定正整数上限，非法值回退到默认 2。Bun 下，某些不轮询中断的内建操作可能在返回取消结果后继续运行，直到该操作结束。v1.3.0 的修复把“对用户立即返回取消”和“实际 worker 退出后释放名额”拆开，避免重复取消积累残留 worker。<a href="#s2">S2</a>、<a href="#s13">S13</a>、<a href="#s14">S14</a></p>
 <p>这个区别很通用：<strong>响应完成、任务停止、资源回收完成，是三个不同时间点。</strong> 不能在 timeout 返回的瞬间就把并发名额无条件释放。</p>
 <h3>v1.4.0：容量用尽时先排队，不是立即失败</h3>
 <p>v1.3.0 引入真实 worker 数量限制，但名额满时会立即拒绝新脚本。v1.4.0 的 <code>reserveCodemodeWorker()</code> 先把等待者加入队列；<code>admitCodemodeWorkers()</code> 按到达顺序放行，<code>releaseCodemodeWorker()</code> 在实际释放后继续准入。<a href="#s26">S26</a></p>
-<p>等待最多 60 秒，而且计入脚本的整体 <code>timeout_ms</code>。假设脚本总时限 10 秒，排队用掉 8 秒，执行最多只剩约 2 秒；不会在获取名额后再获得一份全新的 10 秒。超时或取消的等待者会从队列移除，没有获得名额就不启动 VM。</p>
-<p>“两个 worker”不是“脚本里只能并发两个工具”。一个脚本里的独立工具调用不逐项占用这两个名额；<code>models.classify()</code> 与 <code>models.generateImages()</code> 则另有每脚本最多 4 项在途调用的限制。提高 worker 上限会增加潜在内存与外部调用压力，不是免费的吞吐提升。</p>
+<p>等待最多 60 秒，并且计入脚本整体的 <code>timeout_ms</code>。假设脚本总时限 10 秒，排队花掉 8 秒，剩下最多只能执行约 2 秒，不会在拿到名额后再补一份完整的 10 秒。等待超时或被取消的请求会从队列移除；没有获得名额就不会启动 VM。</p>
+<p>“两个 worker”并不等于“脚本里只能并发两个工具”。脚本中彼此独立的工具调用不会逐项占用这两个名额；<code>models.classify()</code> 和 <code>models.generateImages()</code> 另有每脚本最多 4 项在途调用的限制。调高 worker 上限会增加潜在的内存与外部调用压力，并不等于免费提升吞吐。</p>
 <p>排队也不等于解决所有相互等待：脚本持有 worker，又等同进程中的另一个脚本获取名额，仍可能形成资源等待。60 秒等待上限提供失败出口，不提供无限递归子代理能力；脚本不能直接启动另一个 <code>codemode</code>。</p>
 <h3>四类常见错误的处置</h3>
 <table>
@@ -721,7 +721,7 @@ text({ count });
 </table>
 <h1 id="chapter-9">第 9 章：扩展、模型与界面，哪些没被 Code Mode 替代</h1>
 <p><strong>本章目标：知道新增功能应该放在哪一层。</strong></p>
-<p>Code Mode 不负责所有定制。它负责模型生成的短程序编排，扩展负责安装到 harness 的可执行行为，skill 负责按需指令，提示模板负责复用输入，主题负责配色。这些能力互补。</p>
+<p>定制需求并不都由 Code Mode 承担。模型生成的短程序编排归它；安装到 harness 的可执行行为归扩展；按需指令归 skill；复用输入归提示模板；配色归主题。这些能力彼此互补。</p>
 <h3>扩展：从分散机制到一个入口</h3>
 <p>v0.35.0 把 hooks 与自定义工具统一成 extensions，并把文件式 slash commands 改称 prompt templates，避免和真正注册的命令混淆。当前 TypeScript 扩展工厂接收 <code>ExtensionAPI</code>，可以注册工具、命令、事件处理器、模型提供商、渲染器等。<a href="#s2">S2</a>、<a href="#s15">S15</a></p>
 <p>最小例子：</p>
@@ -741,10 +741,10 @@ export default function (pi: ExtensionAPI) {
 <p>扩展工厂负责注册，不宜直接启动 watcher、socket、定时器。因为有些命令只加载扩展，并不启动会话。长寿命资源应在 <code>session_start</code> 或实际需要时开启，并在 <code>session_shutdown</code> 幂等清理。</p>
 <p>分支相关工具状态可以放工具结果 <code>details</code>；不进入模型的持久数据用 <code>appendEntry()</code>；希望进入模型的自定义内容用 <code>sendMessage()</code>；跨会话数据用外部存储。重建状态应读取 <code>getBranch()</code>，不是遍历整个文件把其他分支也合并。<a href="#s15">S15</a></p>
 <h3>Provider 仍然承担协议适配</h3>
-<p>Code Mode 不会消除 Anthropic、OpenAI、Google 等协议差异。<code>ai</code> 层继续负责模型接入、流式归一化与内容转换。v1.3.0 切换模型时会丢弃由另一模型产生的历史 thinking 块，避免当普通文本交给新模型；特定提供商的缓存保持也是 provider 相关行为，不能推导成“所有模型切换都无代价”。<a href="#s2">S2</a></p>
+<p>Code Mode 不会消除 Anthropic、OpenAI、Google 等协议差异，模型接入、流式归一化与内容转换仍由 <code>ai</code> 层负责。v1.3.0 起切换模型时会丢弃由另一模型产生的历史 thinking 块，避免它们被当作普通文本交给新模型；特定提供商的缓存保持也属于 provider 相关行为，不能据此认为所有模型切换都没有代价。<a href="#s2">S2</a></p>
 <p>脚本中的 <code>models.*</code> 可访问模型目录、运行分类器、生成图片，但不能把聊天模型当作任意子 Agent 在脚本中调用。分类和生成图片可能计费，其 usage 会纳入会话成本；要检查 <code>stopReason</code> 与 <code>errorMessage</code>。图片要用 <code>image(block)</code> 展示，不要用 <code>text()</code> 打印 base64。<a href="#s10">S10</a></p>
 <h3>v1.4.0：把图片交给分类器，而非打印 base64</h3>
-<p><code>models.classify()</code> 新增 <code>images</code> 输入，适用于受支持的 Jev、Clef 服务和具有相应能力的模型。不能因为模型类别是 classifier，就认定它支持图片：先查目录中 <code>input</code> 是否包含 <code>&quot;image&quot;</code>，再按 provider 核对格式与数量限制。图片分类与生成图片是两项不同能力。<a href="#s10">S10</a>、<a href="#s27">S27</a></p>
+<p><code>models.classify()</code> 新增了 <code>images</code> 输入，适用于受支持的 Jev、Clef 服务以及具备相应能力的模型。模型类别是 classifier，并不代表它就支持图片：先查目录中的 <code>input</code> 是否包含 <code>&quot;image&quot;</code>，再按 provider 核对格式与数量限制。图片分类与生成图片是两项不同的能力。<a href="#s10">S10</a>、<a href="#s27">S27</a></p>
 <p>下面是 <code>examples/scripts/06-classify-image.js</code> 的契约示例。实际运行需要可用的图片分类模型、对应凭据和本地 <code>screenshot.png</code>，可能产生费用：</p>
 <pre><code class="language-js">const candidates = await models.getAvailableOfType(&quot;classifier&quot;);
 const vision = candidates.find(m =&gt; m.input?.includes(&quot;image&quot;));
@@ -772,7 +772,7 @@ text({ probability: answer.probability });
 <p><code>probability</code> 是模型判断的概率，不是经过本书验证的页面缺陷率，也不能证明图片没有问题。本书仅用替身检查调用结构、错误处理和不输出图片内容，没有调用真实分类服务。</p>
 <p>代理兼容尤其需要注意：各 System One 服务接收图片的格式不同。<code>compat.imageInput</code> 和 <code>sendImageOptInHeader</code> 可在 provider 层配置；直接把请求改发 OpenRouter，却继续使用 TypeSafe 的 assets 形态，可能出现请求成功但图片被忽略。v1.4.0 新增的 <code>models-configuration.md</code> 从 schema 生成字段参考，按实际代理协议查证，不猜兼容选项。<a href="#s29">S29</a></p>
 <h3>恢复会话与扩展弹窗也有边界修复</h3>
-<p>v1.3.0 已恢复分支记录过的活动工具；v1.4.0 进一步处理工具注册晚于分支记录的情况，例如会话开始后新装扩展。分支未显式增删的工具默认可活动，但 <code>defaultActive: false</code> 仍应生效。恢复后要检查实际可调用集合，不能把这项修复理解成强制启用所有工具。</p>
+<p>v1.3.0 已能恢复分支记录过的活动工具；v1.4.0 进一步处理工具注册晚于分支记录的情况，例如会话开始后才安装的扩展。分支没有显式增删的工具默认可活动，但 <code>defaultActive: false</code> 仍应生效。恢复之后要检查实际可调用的集合，不能把这项修复理解成强制启用所有工具。</p>
 <p>交互式扩展同时打开 <code>select</code>、<code>confirm</code>、<code>input</code>、<code>editor</code> 或 inline <code>custom()</code> 时，新弹窗不再让先前 Promise 永久悬挂；关闭当前弹窗会回到前一个。这修的是交互生命周期，不是给扩展增加 OS 权限隔离。<a href="#s2">S2</a></p>
 <h3>选择哪种集成方式</h3>
 <table>
@@ -821,10 +821,10 @@ text({ probability: answer.probability });
 </tr>
 </tbody>
 </table>
-<p>TUI 是事件消费者和交互层，不是业务循环本身。RPC 与 SDK 不需要复制一套“自己的 Agent 算法”；它们驱动同样的 session/agent 机制。自定义 UI 要区分 <code>ctx.hasUI</code> 与终端专属组件，不能假定 print 模式也有确认框。<a href="#s7">S7</a>、<a href="#s9">S9</a>、<a href="#s15">S15</a></p>
+<p>TUI 是事件消费者和交互层，不是业务循环本身。RPC 与 SDK 不需要另写一套 Agent 算法，它们驱动的是同一套 session/agent 机制。自定义 UI 要区分 <code>ctx.hasUI</code> 与终端专属组件，不能假定 print 模式下也有确认框。<a href="#s7">S7</a>、<a href="#s9">S9</a>、<a href="#s15">S15</a></p>
 <h3>SDK 的一个关键差异</h3>
 <p>CLI 会加载内置 Code Mode、tool-search、MCP 扩展；SDK 默认不会替你装好这三者。需要通过 <code>DefaultResourceLoader.extensionFactories</code> 添加，并在建立会话后 <code>bindExtensions()</code>，让 <code>session_start</code> 触发 MCP 后台连接。本书 <code>examples/sdk-codemode-mcp.ts</code> 保存了该版本官方示例。<a href="#s20">S20</a></p>
-<p><strong>设计练习：</strong> “每次调用 shell 前做企业策略校验”应该写进临时 Code Mode 脚本吗？不应该。应在工具边界实现可审计的扩展策略，并用 OS/容器限制补上真正的权限边界。模型生成的代码不是强制执行安全策略的地方。</p>
+<p><strong>设计练习：</strong> “每次调用 shell 前做企业策略校验”应该写进临时的 Code Mode 脚本吗？不应该。可审计的扩展策略应当实现在工具边界，真正的权限边界则用 OS/容器限制补上。模型生成的代码不是执行强制安全策略的合适位置。</p>
 <h1 id="chapter-10">第 10 章：从 0.99.2 到 1.4.0，具体差了什么</h1>
 <p><strong>本章目标：把长期演进、1.3.0 基线和 1.4.0 增量分开。</strong></p>
 <p>如果你的“0.9.xxx”其实是 0.99.2，前面很多机制你已经有了：Code Mode、独立 <code>pi-codemode</code> 包、工具发现、MCP、树形会话、统一扩展，并不是升级到 1.4.0 才第一次出现。下面只看这个较短区间。<a href="#s2">S2</a>、<a href="#s21">S21</a></p>
@@ -923,13 +923,13 @@ text({ probability: answer.probability });
 </ol>
 <p>这些是集成验收建议，不是本轮全部已运行的测试。1.4.0 的 Rex 终端支持、退出模式清理、Linux 挂起后的剪贴板和中文标点旁 Markdown 渲染也有改善，但没有改变前面所画的 Agent / AgentSession / Code Mode 职责分层。<a href="#s2">S2</a></p>
 <h3>“约少 40% token”到底指什么</h3>
-<p>v1.0.0 变更日志给出的例子是：默认工具并启用 Code Mode 时，一个 GPT-5.6 请求的提示规模从约 5,300 降到约 3,300 token。减少来自说明精简、按需阅读模型 API 文档、避免重复声明等。它是上游记录中的特定场景，不是本书实测，更不是任何项目、模型、工具数量下都少 40%。<a href="#s2">S2</a></p>
+<p>v1.0.0 变更日志给出的例子是：默认工具并启用 Code Mode 时，一个 GPT-5.6 请求的提示规模从约 5,300 降到约 3,300 token。减少来自说明精简、按需阅读模型 API 文档、避免重复声明等。这是上游记录中的特定场景，不是本书实测，也不表示任何项目、模型、工具数量下都少 40%。<a href="#s2">S2</a></p>
 <h3>三个明确的迁移断点</h3>
 <p><strong>探测工具存在性。</strong> 新版访问未知成员可能抛出带近似匹配建议的错误。旧代码 <code>typeof tools.someName</code> 也可能触发属性读取，改用 <code>&quot;someName&quot; in tools</code>。<a href="#s21">S21</a></p>
 <p><strong>MCP 类型声明。</strong> 独立包在 v1.2.0 移除了 <code>MCP_TYPESCRIPT_PREAMBLE</code> 和 <code>mcpStructuredContentSchema()</code>。输出 schema 直接描述完整返回对象，声明渲染不再依赖一个悬空的 <code>CallToolResult&lt;T&gt;</code> 名称。消费这些底层导出的应用要更新。<a href="#s21">S21</a></p>
-<p><strong>独立沙箱 close()。</strong> v1.3.0 中结果和 <code>close()</code> 在请求关闭后即可 settle，不代表 worker 已退出。自己管理资源池时，用 <code>onWorkerStarted(exited)</code> 或 <code>acquireWorker()</code> 的释放回调追踪真实退出，不能照旧按结果完成释放容量。<a href="#s13">S13</a>、<a href="#s21">S21</a></p>
+<p><strong>独立沙箱 close()。</strong> v1.3.0 中结果和 <code>close()</code> 在请求关闭后即可 settle，但不代表 worker 已退出。自己管理资源池时，要用 <code>onWorkerStarted(exited)</code> 或 <code>acquireWorker()</code> 的释放回调追踪真实退出，不能照旧在结果完成后就释放容量。<a href="#s13">S13</a>、<a href="#s21">S21</a></p>
 <h3>不要继续照旧实验目录做设计</h3>
-<p>v1.0.0 的 <code>pi-agent-core</code> 清理与 v1.2.0 的 CLI 实验栈清理是两件事。前者确实移除了该包的旧实验性 harness 导出；后者移除的 client/protocol/server 栈未进入正式 coding-agent 发布包。做源码研究时能看见它们，不能据此假设它们都是稳定产品 API。<a href="#s18">S18</a>、<a href="#s22">S22</a></p>
+<p>v1.0.0 对 <code>pi-agent-core</code> 的清理与 v1.2.0 对 CLI 实验栈的清理是两件事。前者移除了该包的旧实验性 harness 导出；后者移除的 client/protocol/server 栈从未进入正式 coding-agent 发布包。做源码研究时能看到它们，但不能据此把它们都当作稳定产品 API。<a href="#s18">S18</a>、<a href="#s22">S22</a></p>
 <h1 id="chapter-11">第 11 章：独立沙箱、云端执行与 Durable 重放</h1>
 <p><strong>本章目标：分清三个看似相近、恢复保证完全不同的架构。</strong></p>
 <p>“Code Mode 可以恢复”这句话缺少主语。普通 CLI、独立沙箱库、Durable 扩展提供的保证并不相同。</p>
@@ -987,13 +987,13 @@ try {
   await sandbox.close();
 }
 </code></pre>
-<p>这是独立库示例，直接注入自己的可信函数。若要套进现有 Agent，不能因为省事直接调用原始 <code>tool.execute()</code>，把既有验证和钩子绕过。官方 CLI 走 <code>ctx.executeTool()</code>；低层 Agent 应使用相应工具调用管线。<a href="#s13">S13</a></p>
+<p>这是独立库示例，直接注入自己的可信函数。若要嵌入现有 Agent，不能图省事直接调用原始 <code>tool.execute()</code>，否则会绕过既有验证和钩子。官方 CLI 走 <code>ctx.executeTool()</code>；低层 Agent 应使用对应的工具调用管线。<a href="#s13">S13</a></p>
 <h3>11.2 为什么 Cloudflare 要把 VM 放进另一个 Worker</h3>
 <p>Node/Bun 用 worker thread 把计算隔离出主线程。Cloudflare 没有同样的 Node worker 环境，且 QuickJS 同步计算会阻塞承载它的 isolate。</p>
 <p>v1.2.0 新增 <code>RemoteCodemodeSandbox</code>：工具和调用记录留在会话一侧，VM 放到<strong>单独部署的 Worker 中的 Durable Object</strong>，每次工具调用通过 Workers RPC 回到宿主。这里的 Durable Object 是 Cloudflare 基础设施，不等于 <code>pi-durable</code> 包。<a href="#s13">S13</a>、<a href="#s21">S21</a></p>
 <figure><svg style="font-family:Noto Sans CJK SC,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" role="img" aria-labelledby="deployment-title deployment-desc"><title id="deployment-title">相同脚本 API，不同计算位置</title><desc id="deployment-desc">Node/Bun 用 worker thread，Cloudflare 可把 VM 放在单独 Worker 的 Durable Object，inline 模式在调用线程运行。</desc><defs><marker id="deployment-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#1B365D"/></marker></defs><rect width="960" height="520" fill="#faf9f5"/><path d="M340 108 H600" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#deployment-arrow)"/><path d="M340 268 H600" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#deployment-arrow)"/><path d="M340 428 H600" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#deployment-arrow)"/><rect x="40" y="64" width="300" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="190.0" y="94" text-anchor="middle" font-size="20" fill="#20201d">Node / Bun 宿主</text><text x="190.0" y="137" text-anchor="middle" font-size="15" fill="#6b6a64">工具与 deadline</text><rect x="600" y="64" width="300" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="750.0" y="94" text-anchor="middle" font-size="20" fill="#20201d">worker thread</text><text x="750.0" y="137" text-anchor="middle" font-size="15" fill="#6b6a64">QuickJS VM</text><rect x="40" y="224" width="300" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="190.0" y="254" text-anchor="middle" font-size="20" fill="#20201d">Cloudflare 会话侧</text><text x="190.0" y="297" text-anchor="middle" font-size="15" fill="#6b6a64">工具与调用记录</text><rect x="600" y="224" width="300" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="750.0" y="254" text-anchor="middle" font-size="20" fill="#20201d">单独部署的 Worker</text><text x="750.0" y="297" text-anchor="middle" font-size="15" fill="#6b6a64">Durable Object 中的 VM</text><rect x="40" y="384" width="300" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="190.0" y="414" text-anchor="middle" font-size="20" fill="#20201d">Inline 宿主</text><text x="190.0" y="457" text-anchor="middle" font-size="15" fill="#6b6a64">允许计算阻塞调用线程</text><rect x="600" y="384" width="300" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="750.0" y="414" text-anchor="middle" font-size="20" fill="#20201d">同一线程的 VM</text><text x="750.0" y="457" text-anchor="middle" font-size="15" fill="#6b6a64">interrupt budget</text><text x="380" y="88" font-size="18" fill="#6b6a64">线程消息</text><text x="380" y="248" font-size="18" fill="#6b6a64">Workers RPC</text><text x="380" y="408" font-size="18" fill="#6b6a64">直接调用</text></svg><figcaption>三种沙箱部署方式</figcaption></figure>
-<p>上游 README 记录了特定 Cloudflare 测试：让脚本持续计算十秒，放在会话对象内或由它加载的 Dynamic Worker 会延迟其他会话请求约十秒，单独部署的 Worker 则约为 50 ms。该数字是上游环境测量，用来说明部署边界选择，不承诺本地环境或你的账号相同。</p>
-<p>Cloudflare 还有两个限制要单独理解：计算不 yield 时墙钟 timeout 不足以约束 CPU，使用 interrupt budget；远程 abort 可以先结束调用侧等待，VM 在下一次工具调用或耗尽预算时才停。远程默认每 VM 32 MiB，不能套用普通 CLI 的 256 MiB。</p>
+<p>上游 README 记录了一项特定 Cloudflare 测试：让脚本持续计算十秒，放在会话对象内或由它加载的 Dynamic Worker 会延迟其他会话请求约十秒，单独部署的 Worker 则约为 50 ms。该数字来自上游环境测量，用来说明部署边界的选择，不保证本地环境或你的账号得到相同结果。</p>
+<p>Cloudflare 还有两个限制需要单独理解：计算不 yield 时，墙钟 timeout 不足以约束 CPU，要使用 interrupt budget；远程 abort 可以先结束调用侧等待，VM 要到下一次工具调用或耗尽预算时才停。远程默认每 VM 32 MiB，不能套用普通 CLI 的 256 MiB。</p>
 <p><code>InlineCodemodeSandbox</code> 直接在调用线程运行，适合能接受阻塞的宿主。portable 入口不包含 Node imports，方便这些环境共用同一脚本 API。</p>
 <h3>11.3 Durable 恢复的是执行历史，不是 VM 内存快照</h3>
 <p><code>pi-durable</code> 在 v0.99.2 的仓库中已经存在，最新区间新增的是与确定性脚本重放结合的 Code Mode 等能力。它是实验 API，版本间可随时变化。Harness 把会话条目、文档状态、任务和提交放进存储，提交后才发布相关状态；持久任务保存阶段检查点，重启后继续调度。<a href="#s23">S23</a></p>
@@ -1008,19 +1008,19 @@ try {
 </ol>
 <p><code>sandbox.start()</code> 的确定性约束包括：<code>Date.now()</code> 来自宿主提供的时间、随机性来自 seed、固定 UTC、不暴露 WeakRef/FinalizationRegistry、结果按宿主编号应用。它不要求保存整个 QuickJS 堆快照。<a href="#s13">S13</a>、<a href="#s23">S23</a></p>
 <h3>一个“扣款后崩溃”的边界案例</h3>
-<p>假设工具向外部系统发起扣款，外部扣款成功，但本地还没记录结果就崩溃。重启后能否再次调用？不能靠“脚本可以重放”来决定。Durable 工具只有声明 <code>replay: &quot;safe&quot;</code> 才能在中断后重新执行；否则会产生 interrupted 错误。即便声明 safe，外部副作用仍需服务端幂等 key 或查询确认。<a href="#s23">S23</a></p>
+<p>假设工具向外部系统发起一笔扣款，外部扣款成功，但本地还没记录结果就崩溃。重启后能否再次调用？这不能靠“脚本可以重放”来决定。Durable 工具只有声明 <code>replay: &quot;safe&quot;</code> 才能在中断后重新执行，否则会产生 interrupted 错误。即便声明了 safe，外部副作用仍需服务端幂等 key 或查询确认。<a href="#s23">S23</a></p>
 <p>所以它并不提供跨任意外部服务的“恰好一次副作用”魔法。它提供的是可记录、可检查、可恢复的调度和调用关系。代码路径改变、VM 指纹或 Code Mode 版本变化，以及 deadline 已经过期，都可能令重放报错，而不是盲目继续。</p>
 <h3>11.4 远程执行环境解决另一个问题</h3>
 <p><code>pi-env</code> 把 Durable 工具的文件与命令操作转到远端机器：本地保留 Harness、存储和凭据；通过 SSH 启动小型 Rust daemon，运行协议化文件与进程操作。<code>RemoteExecutionEnv</code> 尽量保持与 <code>NodeExecutionEnv</code> 相同的语义。<a href="#s24">S24</a></p>
-<p>这与把 QuickJS VM 放远端是两个独立选择：VM 放哪里，决定脚本计算在哪里；执行环境放哪里，决定文件和命令在哪里发生。远程执行也不自动成为沙箱，仍要限制远端账户权限、网络和可用凭据，核验 SSH host key。</p>
+<p>这与把 QuickJS VM 放到远端是两个独立选择：VM 放在哪里，决定脚本计算在哪里；执行环境放在哪里，决定文件和命令在哪里发生。远程执行也不会自动成为沙箱，仍需限制远端账户权限、网络和可用凭据，并核验 SSH host key。</p>
 <figure><svg style="font-family:Noto Sans CJK SC,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 508" role="img" aria-labelledby="durable-package-dependencies-title durable-package-dependencies-desc"><title id="durable-package-dependencies-title">Durable 与远程执行的包关系</title><desc id="durable-package-dependencies-desc">env 依赖 Durable 与 chord；Durable 依赖 ai、codemode、chord。这套独立运行时与普通 CLI 分开。</desc><defs><marker id="durable-package-dependencies-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#1B365D"/></marker></defs><rect width="960" height="508" fill="#faf9f5"/><path d="M480 116 V180" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#durable-package-dependencies-arrow)"/><path d="M600 72 H928 Q936 72 936 80 V376 Q936 384 928 384 H920" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#durable-package-dependencies-arrow)"/><path d="M420 268 V284 Q420 292 412 292 H168 Q160 292 160 300 V340" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#durable-package-dependencies-arrow)"/><path d="M480 268 V340" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#durable-package-dependencies-arrow)"/><path d="M540 268 V284 Q540 292 548 292 H792 Q800 292 800 300 V340" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#durable-package-dependencies-arrow)"/><rect x="360" y="28" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="480.0" y="58" text-anchor="middle" font-size="20" fill="#20201d">env</text><text x="480.0" y="101" text-anchor="middle" font-size="15" fill="#6b6a64">远程 ExecutionEnv / Rust daemon</text><rect x="360" y="180" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="480.0" y="210" text-anchor="middle" font-size="20" fill="#20201d">durable</text><text x="480.0" y="253" text-anchor="middle" font-size="15" fill="#6b6a64">实验性持久任务 Harness</text><rect x="40" y="340" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="160.0" y="370" text-anchor="middle" font-size="20" fill="#20201d">ai</text><text x="160.0" y="413" text-anchor="middle" font-size="15" fill="#6b6a64">模型调用</text><rect x="360" y="340" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="480.0" y="370" text-anchor="middle" font-size="20" fill="#20201d">codemode</text><text x="480.0" y="413" text-anchor="middle" font-size="15" fill="#6b6a64">QuickJS 与确定性执行</text><rect x="680" y="340" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="800.0" y="370" text-anchor="middle" font-size="20" fill="#20201d">chord</text><text x="800.0" y="413" text-anchor="middle" font-size="15" fill="#6b6a64">文档状态与 Context</text><text x="40" y="478" font-size="18" fill="#6b6a64">箭头表示直接内部依赖。普通 coding-agent 不依赖这套 Harness，也不会自动获得持久重放。</text></svg><figcaption>Durable、Code Mode、模型层与远程执行环境的实际包关系</figcaption></figure>
-<p>这张图与第 3 章的 CLI 依赖图应分开阅读：一个是实验性持久执行方案，一个是普通编码代理。它们复用模型和沙箱基础库，不意味着生命周期、状态格式和恢复契约相同。</p>
+<p>这张图应与第 3 章的 CLI 依赖图分开阅读：一个是实验性持久执行方案，一个是普通编码代理。两者复用模型和沙箱基础库，不意味着生命周期、状态格式和恢复契约相同。</p>
 <h1 id="chapter-12">第 12 章：迁移路线与动手实验</h1>
 <p><strong>本章目标：把概念变成能检查的操作，不在读完后只记得名词。</strong></p>
 <h3>12.1 从 v0.9.4 迁移，先选你实际使用的层</h3>
 <p>如果只是使用终端 CLI，备份会话与配置、确认新包名和运行环境，再逐步开启功能。当前 README 要求 Node.js 22.19 或更新；不要把旧仓库根目录的 Node 20 要求当作现版本要求。</p>
 <p>如果嵌入的是旧 <code>Agent</code>，重点检查 transport API 到当前 <code>streamFn</code> / 消息转换接口的变化、旧附件模型、事件与并发语义。不要只替换 npm 包名就假定类型兼容。若依赖旧 <code>AgentHarness</code>，当前 <code>pi-agent-core</code> 已不再导出它，需要明确迁向 <code>AgentSession</code> 还是实验性 Durable。<a href="#s6">S6</a>、<a href="#s22">S22</a></p>
-<p>如果自定义过 hooks 与 tools，按当前 extension API 合并注册位置，并根据事件的准确返回类型处理阻止、变换与通知。不要把早年事件名机械替换成新名字而不检查契约。</p>
+<p>如果自定义过 hooks 与 tools，按当前 extension API 合并注册位置，并按事件的准确返回类型处理阻止、变换与通知。不要只把早年事件名机械替换成新名字而不检查契约。</p>
 <h3>12.2 从 v0.99.2 迁移，做一张小检查表</h3>
 <ul>
 <li>[ ] 识别工具存在性用 <code>&quot;name&quot; in tools</code>，不靠读取未知成员。</li>
@@ -1068,11 +1068,11 @@ git -C sources/pi-v0.99.2 describe --tags --exact-match
 <p>本书提供 <code>examples/run-checks.mjs</code>，使用 Node 内置断言和模拟工具运行脚本文件：</p>
 <pre><code class="language-sh">node examples/run-checks.mjs
 </code></pre>
-<p>它检查并行读取与字段筛选、部分失败保留、非零 shell 退出码、成功/失败状态提交，图片分类的成功与失败契约，以及输出减量算术。它不是 QuickJS 的安全测试，不调用外部服务，也不能证明 MCP 或真实沙箱无缺陷。Code Mode 脚本放在 <code>examples/scripts/</code>，可以阅读或交给 Pi 使用。</p>
+<p>它检查并行读取与字段筛选、部分失败保留、非零 shell 退出码、成功/失败状态提交、图片分类的成功与失败契约，以及输出减量算术。它不是 QuickJS 的安全测试，不调用外部服务，也不能证明 MCP 或真实沙箱没有缺陷。Code Mode 脚本放在 <code>examples/scripts/</code>，可以阅读，也可以交给 Pi 使用。</p>
 <h3>实验 C：观察分支与外部世界的区别</h3>
 <p>在临时项目里执行一个脚本，保存小游标并写入测试文件。回到保存前的会话节点创建另一分支，再 <code>load()</code>：游标沿新分支重建，但文件不会因此恢复。只使用可丢弃文件，不要拿生产数据做这个实验。</p>
 <h3>实验 D：按官方 SDK 示例接上 MCP</h3>
-<p><code>examples/sdk-codemode-mcp.ts</code> 是固定版本官方示例的副本。重点阅读三处：<code>extensionFactories</code> 安装三个内置扩展；<code>defaultTools</code> 增量启用；<code>session.bindExtensions({})</code> 发出启动事件。真正运行需要当前包、凭据和 MCP 配置。本次没有自动执行付费模型调用或添加服务器。</p>
+<p><code>examples/sdk-codemode-mcp.ts</code> 是固定版本官方示例的副本。重点阅读三处：<code>extensionFactories</code> 安装三个内置扩展；<code>defaultTools</code> 增量启用；<code>session.bindExtensions({})</code> 发出启动事件。真正运行还需要当前包、凭据和 MCP 配置。本次没有自动执行付费模型调用，也没有添加服务器。</p>
 <h3>五个问题，检查是否真的理解</h3>
 <ol>
 <li><strong>Code Mode 是否等于多个工具并行？</strong> 不等于。新版普通调用也能并行；Code Mode 多了程序控制流和中间结果筛选。</li>
