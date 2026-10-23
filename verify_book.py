@@ -9,6 +9,8 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 ROOT = Path(__file__).parent
+versions = json.loads((ROOT/'sources/versions.json').read_text())
+VERSION = versions['target_version']
 
 class Page(HTMLParser):
     def __init__(self):
@@ -66,9 +68,22 @@ with zipfile.ZipFile(ROOT/'pi-architecture.zh-CN.epub') as z:
         href=el.get('href','')
         if href.startswith('book.xhtml#'):assert href.split('#')[1] in bookids
 
-with zipfile.ZipFile(ROOT/'pi-mono-v1.3.0.zip') as z:
-    data=json.loads(z.read('pi-v1.3.0/packages/coding-agent/package.json'))
-    assert data['version']=='1.3.0'
+with zipfile.ZipFile(ROOT/f'pi-mono-v{VERSION}.zip') as z:
+    data=json.loads(z.read(f'pi-v{VERSION}/packages/coding-agent/package.json'))
+    assert data['version'] == VERSION
+    assert len(z.namelist()) > 1000, 'empty or incomplete source archive'
+
+html = (ROOT/'index.html').read_text()
+assert f'本版核查版本 v{VERSION}' in html
+assert f'book-v{VERSION}/pi-mono-v{VERSION}.zip' in html
+for phrase in ('PI_CODEMODE_MAX_WORKERS', 'reserveTokens', 'images: [photo]', 's29'):
+    assert phrase in html, f'missing v1.4.0 material: {phrase}'
+source_md = (ROOT/'chapters/03-contracts-and-integration.md').read_text()
+script = (ROOT/'examples/scripts/06-classify-image.js').read_text().split('\n', 1)[1].strip()
+assert script in source_md, 'classifier code in the chapter differs from the runnable example'
+with zipfile.ZipFile(ROOT/'pi-architecture.zh-CN.epub') as z:
+    assert f'v{VERSION}' in z.read('OEBPS/content.opf').decode()
+    assert 'PI_CODEMODE_MAX_WORKERS' in z.read('OEBPS/book.xhtml').decode()
 
 subprocess.run(['node',str(ROOT/'examples/run-checks.mjs')],check=True)
 assert (ROOT/'pi-architecture.zh-CN.pdf').read_bytes().startswith(b'%PDF-')

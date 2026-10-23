@@ -1,6 +1,6 @@
 # Pi 架构演进中文电子书
 
-比较 **v0.9.4 / v0.99.2 → v1.3.0**，重点解释 Code Mode、工具执行、MCP、会话和实验性 Durable 的区别。
+比较 **v0.9.4 / v0.99.2 → v1.4.0**，保留 v1.3.0 为上一版参照，重点解释 Code Mode、工具执行、MCP、会话和实验性 Durable 的区别。
 
 ## 阅读入口
 
@@ -8,7 +8,7 @@
 - [PDF](pi-architecture.zh-CN.pdf)：A4 排版、可点击目录与来源链接。
 - [EPUB](pi-architecture.zh-CN.epub)：可导入支持 EPUB 3 和 SVG 的电子书阅读器。
 - [Markdown 原稿](book.zh-CN.md)：便于编辑、搜索和再次排版。
-- [最新版源码 ZIP](pi-mono-v1.3.0.zip)：固定标签 v1.3.0，不含安装依赖和 Git 历史。
+- [本版源码 ZIP](https://github.com/StarDust0083-GP03/pi-mono-architecture-book/releases/download/book-v1.4.0/pi-mono-v1.4.0.zip)：固定标签 v1.4.0，不含安装依赖和 Git 历史。
 
 网页的正文、图片和阅读样式均保存在文件中，不依赖网络加载才能阅读；初始化模板保留了可选 Tailwind CDN，断网也有完整本地样式回退。EPUB 没有外部资源依赖。
 
@@ -25,7 +25,7 @@
 7. MCP、exposure、工具发现与按需连接。
 8. 返回值、错误、并发、取消和分支相对 store。
 9. 扩展、模型、TUI、RPC 与 SDK。
-10. v0.99.2 到 v1.3.0 的变化和迁移断点。
+10. v0.99.2 到 v1.4.0 的变化、1.3 到 1.4 增量和迁移断点。
 11. 独立沙箱、Cloudflare、确定性重放、Durable 与 pi-env。
 12. 迁移清单、实验、练习答案和术语。
 
@@ -48,12 +48,13 @@
 
 ## 源码与证据
 
-核查日期：2026-10-20。官方 GitHub latest release 与 npm latest 均为 **1.3.0**。
+核查日期：2026-10-23。本版固定 **v1.4.0**（正式发布时间为 2026-10-21），不跟随标签之后的主分支。新增 worker 排队、摘要预算、图片分类与恢复边界说明。
 
-- `sources/pi-mono/`：新下载的仓库，固定在 v1.3.0。
+- `sources/pi-v1.4.0/`：新增的独立 worktree，固定在 v1.4.0。
+- `sources/pi-mono/`：上一版源码，仍固定在 v1.3.0。
 - `sources/pi-v0.9.4/`、`sources/pi-v0.99.2/`：同仓库的独立 Git worktree。
-- `sources/versions.json`：发布 API 返回值与三个固定提交。
-- `sources/source-index.json`：25 条官方来源，正文使用 S1 至 S25 编号。
+- `sources/versions.json`：发布 API 返回值与四个固定提交。
+- `sources/source-index.json`：29 条官方来源，正文使用 S1 至 S29 编号。
 - `sources/*--stat.txt`、`sources/*--name-status.txt`：完整文件级差异。
 
 没有修改原来的 `../pi-mono/`，没有更新全局 Pi，没有改任何 Pi 用户配置，没有安装或运行源码依赖。
@@ -65,7 +66,7 @@ node examples/run-checks.mjs
 python3 verify_book.py
 ```
 
-检查只使用 Node 模拟工具验证教学脚本，不是沙箱安全测试。`examples/sdk-codemode-mcp.ts` 是 v1.3.0 官方 SDK 示例副本，运行它需要另外准备依赖、凭据与服务器。
+检查只使用 Node 模拟工具验证教学脚本，不是沙箱安全测试。6 个教学脚本含图片分类成功与失败契约。`examples/sdk-codemode-mcp.ts` 与 v1.4.0 官方 SDK 示例一致，运行它需要另外准备依赖、凭据与服务器。
 
 再生成 Markdown、网页与 EPUB：
 
@@ -84,4 +85,4 @@ chromium --headless --disable-gpu --no-pdf-header-footer \
   "file://$PWD/index.html"
 ```
 
-构建与检查的实际范围见 [QA.md](QA.md)。未运行完整上游测试、付费模型、实际 MCP、Cloudflare、SSH 或正式 EPUBCheck。
+构建与检查的实际范围见 [QA.md](QA.md)。未运行完整上游测试、付费模型、实际 MCP、Cloudflare 或 SSH；EPUBCheck 的本次运行结果见 QA.md。

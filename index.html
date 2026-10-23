@@ -176,15 +176,15 @@ blockquote{margin:24px 0;border-left:3px solid var(--brand);padding:1px 20px;col
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 @page{size:A4;margin:18mm 16mm 20mm;@bottom-right{content:counter(page);font:9pt sans-serif;color:#6b6a64}}
 @media print{.print-toc{display:block;break-before:page}.print-toc a{display:block;font-size:11pt;margin:8px 0}.print-toc h2{margin-top:15mm}html{scroll-behavior:auto}body{background:#fff;font-size:10.5pt;line-height:1.85}.layout{display:block;padding:0;max-width:none}main{max-width:none}nav.toc,.tools,.playground input,.playground label,button,.screen-only{display:none!important}h1{break-before:page;font-size:24pt;margin:15mm 0 8mm}h1#cover{break-before:auto;font-size:37pt;margin-top:25mm}h2{font-size:18pt}h3{font-size:14pt;break-after:avoid}p,li{orphans:3;widows:3}table{font-size:8.5pt}thead{display:table-header-group}tr{break-inside:avoid}pre{white-space:pre-wrap;font-size:8pt;overflow:visible;break-inside:avoid}pre code{white-space:pre-wrap;overflow-wrap:anywhere}figure{padding:10px 0;break-inside:avoid}figcaption{font-size:9pt}.source{break-inside:avoid}a{color:inherit;text-decoration:none}.edition{font-size:10pt}footer{break-before:page}}
-</style></head><body><div class="layout"><nav class="toc" aria-label="章节目录"><div class="nav-title">Pi 架构演进</div><a href="#cover">从工具循环到 Code Mode</a><a href="#chapter-1">第 1 章：先把版本说清楚</a><a href="#chapter-2">第 2 章：v0.9.4 原本是怎样工作的</a><a href="#chapter-3">第 3 章：当前架构，分清 CLI 与独立基础库</a><a href="#chapter-4">第 4 章：一次请求的完整生命周期</a><a href="#chapter-5">第 5 章：Code Mode 到底改变了什么</a><a href="#chapter-6">第 6 章：拆开沙箱，看见真正的调用链</a><a href="#chapter-7">第 7 章：工具太多时，怎样发现而不塞满提示</a><a href="#chapter-8">第 8 章：结果、失败、并发与状态</a><a href="#chapter-9">第 9 章：扩展、模型与界面，哪些没被 Code Mode 替代</a><a href="#chapter-10">第 10 章：从 0.99.2 到 1.3.0，具体差了什么</a><a href="#chapter-11">第 11 章：独立沙箱、云端执行与 Durable 重放</a><a href="#chapter-12">第 12 章：迁移路线与动手实验</a><a href="#sources">来源索引与核查范围</a></nav>
-<main><header class="edition">中文源码导读 · 2026-10-20 · 最新核查版本 v1.3.0<br />12 章 · 12 张架构图 · 5 个可验证脚本</header>
-<div class="tools"><a href="pi-architecture.zh-CN.pdf">下载 PDF</a><a href="pi-architecture.zh-CN.epub">下载 EPUB</a><a href="book.zh-CN.md">Markdown 原稿</a><a href="https://github.com/StarDust0083-GP03/pi-mono-architecture-book/releases/download/book-v1.3.0/pi-mono-v1.3.0.zip">v1.3.0 源码 ZIP</a><button id="print-book" type="button">打印 / 存为 PDF</button></div>
+</style></head><body><div class="layout"><nav class="toc" aria-label="章节目录"><div class="nav-title">Pi 架构演进</div><a href="#cover">从工具循环到 Code Mode</a><a href="#chapter-1">第 1 章：先把版本说清楚</a><a href="#chapter-2">第 2 章：v0.9.4 原本是怎样工作的</a><a href="#chapter-3">第 3 章：当前架构，分清 CLI 与独立基础库</a><a href="#chapter-4">第 4 章：一次请求的完整生命周期</a><a href="#chapter-5">第 5 章：Code Mode 到底改变了什么</a><a href="#chapter-6">第 6 章：拆开沙箱，看见真正的调用链</a><a href="#chapter-7">第 7 章：工具太多时，怎样发现而不塞满提示</a><a href="#chapter-8">第 8 章：结果、失败、并发与状态</a><a href="#chapter-9">第 9 章：扩展、模型与界面，哪些没被 Code Mode 替代</a><a href="#chapter-10">第 10 章：从 0.99.2 到 1.4.0，具体差了什么</a><a href="#chapter-11">第 11 章：独立沙箱、云端执行与 Durable 重放</a><a href="#chapter-12">第 12 章：迁移路线与动手实验</a><a href="#sources">来源索引与核查范围</a></nav>
+<main><header class="edition">中文源码导读 · 2026-10-23 · 本版核查版本 v1.4.0<br />12 章 · 12 张架构图 · 6 个可验证脚本</header>
+<div class="tools"><a href="pi-architecture.zh-CN.pdf">下载 PDF</a><a href="pi-architecture.zh-CN.epub">下载 EPUB</a><a href="book.zh-CN.md">Markdown 原稿</a><a href="https://github.com/StarDust0083-GP03/pi-mono-architecture-book/releases/download/book-v1.4.0/pi-mono-v1.4.0.zip">v1.4.0 源码 ZIP</a><button id="print-book" type="button">打印 / 存为 PDF</button></div>
 <h1 id="cover">从工具循环到 Code Mode</h1>
-<h2>Pi 架构演进：v0.9.4、v0.99.2 与 v1.3.0</h2>
-<p><strong>一部跟着源码读的中文电子书。</strong> 本版依据官方仓库、固定版本源码和发布记录整理，核查日期为 2026 年 10 月 20 日。核查时最新的 GitHub 正式发布为 <strong>v1.3.0</strong>，发布时间为 2026 年 10 月 15 日。本书解释这个版本快照，不把以后 <code>main</code> 上的代码混进来。</p>
+<h2>Pi 架构演进：v0.9.4、v0.99.2 与 v1.4.0</h2>
+<p><strong>一部跟着源码读的中文电子书。</strong> 本版依据官方仓库、固定版本源码和发布记录整理，核查日期为 2026 年 10 月 23 日，比较端点更新为 <strong>v1.4.0</strong>，正式发布时间为 2026 年 10 月 21 日。保留 v1.3.0 作为上一版参照，本书不把标签之后 <code>main</code> 上的代码混进来。</p>
 <p>先说结论：Pi 的核心仍然是“模型产生响应，工具执行操作，结果供下一轮模型使用”的循环。变化主要发生在循环外围：树形会话、统一扩展系统、更丰富的工具契约、内置 MCP，以及让模型用 JavaScript 编排工具的 <strong>Code Mode</strong>。最新仓库还提供独立的实验性 Durable 运行时，它可以恢复中断任务，但不是普通 CLI 已经切换过去的新内核。</p>
 <p>本书沿用同目录学习课程的组织方式：一章解决一个问题，先建立直觉，再看图、沿源码追踪，最后做例子和练习。重点了解 Code Mode，可以先读第 1、3、5、6、8、11 章；想理解整套架构则顺序阅读。你只需了解基本 JavaScript、Promise，以及“模型能够请求调用工具”这一概念，不需要预先掌握编译器或 WebAssembly。</p>
-<section class="print-toc" aria-label="打印版目录"><h2>目录</h2><a href="#chapter-1">第 1 章：先把版本说清楚</a><a href="#chapter-2">第 2 章：v0.9.4 原本是怎样工作的</a><a href="#chapter-3">第 3 章：当前架构，分清 CLI 与独立基础库</a><a href="#chapter-4">第 4 章：一次请求的完整生命周期</a><a href="#chapter-5">第 5 章：Code Mode 到底改变了什么</a><a href="#chapter-6">第 6 章：拆开沙箱，看见真正的调用链</a><a href="#chapter-7">第 7 章：工具太多时，怎样发现而不塞满提示</a><a href="#chapter-8">第 8 章：结果、失败、并发与状态</a><a href="#chapter-9">第 9 章：扩展、模型与界面，哪些没被 Code Mode 替代</a><a href="#chapter-10">第 10 章：从 0.99.2 到 1.3.0，具体差了什么</a><a href="#chapter-11">第 11 章：独立沙箱、云端执行与 Durable 重放</a><a href="#chapter-12">第 12 章：迁移路线与动手实验</a><a href="#sources">来源索引与核查范围</a></section><h1 id="chapter-1">第 1 章：先把版本说清楚</h1>
+<section class="print-toc" aria-label="打印版目录"><h2>目录</h2><a href="#chapter-1">第 1 章：先把版本说清楚</a><a href="#chapter-2">第 2 章：v0.9.4 原本是怎样工作的</a><a href="#chapter-3">第 3 章：当前架构，分清 CLI 与独立基础库</a><a href="#chapter-4">第 4 章：一次请求的完整生命周期</a><a href="#chapter-5">第 5 章：Code Mode 到底改变了什么</a><a href="#chapter-6">第 6 章：拆开沙箱，看见真正的调用链</a><a href="#chapter-7">第 7 章：工具太多时，怎样发现而不塞满提示</a><a href="#chapter-8">第 8 章：结果、失败、并发与状态</a><a href="#chapter-9">第 9 章：扩展、模型与界面，哪些没被 Code Mode 替代</a><a href="#chapter-10">第 10 章：从 0.99.2 到 1.4.0，具体差了什么</a><a href="#chapter-11">第 11 章：独立沙箱、云端执行与 Durable 重放</a><a href="#chapter-12">第 12 章：迁移路线与动手实验</a><a href="#sources">来源索引与核查范围</a></section><h1 id="chapter-1">第 1 章：先把版本说清楚</h1>
 <p><strong>本章目标：知道我们究竟在比较哪两个时代。</strong></p>
 <p><code>0.9.x</code> 和 <code>0.99.x</code> 不是同一组版本。版本号不是小数，而是整数元组；次版本号 99 在 9 之后。把两者混为一谈，就会把早已存在的能力误写成最新版本才出现。</p>
 <table>
@@ -229,12 +229,17 @@ blockquote{margin:24px 0;border-left:3px solid var(--brand);padding:1px 20px;col
 <tr>
 <td>v1.3.0</td>
 <td>2026-10-15，正式发布</td>
-<td>本书最新端点；取消与 worker 数量控制、恢复活动工具集等修复</td>
+<td>上一版参照；取消与 worker 数量控制、恢复活动工具集等修复</td>
+</tr>
+<tr>
+<td>v1.4.0</td>
+<td>2026-10-21，正式发布</td>
+<td>本版端点；worker 排队、摘要输出预算、图片分类及恢复边界修复</td>
 </tr>
 </tbody>
 </table>
 <p>官方仓库现在叫 <code>earendil-works/pi</code>，历史上的 <code>badlogic/pi-mono</code> Git 地址仍能访问到这个项目。旧源码里的包名前缀是 <code>@mariozechner/*</code>，当前是 <code>@earendil-works/*</code>。改名是迁移时必须处理的事情，但改名本身不是一种新 Agent 算法。<a href="#s1">S1</a>、<a href="#s2">S2</a></p>
-<p>你原有的 <code>learning/pi-mono</code> 检出点显示为 <code>v0.54.0-1-g3a3e37d3</code>，而且存在本地修改。本次没有修改它，也没有升级当前安装的 Pi。新的 <code>sources/</code> 目录单独保存了三个用于比较的固定版本。</p>
+<p>你原有的 <code>learning/pi-mono</code> 检出点显示为 <code>v0.54.0-1-g3a3e37d3</code>，而且存在本地修改。本次没有修改它，也没有升级当前安装的 Pi。<code>sources/</code> 单独保存四个用于比较的固定版本，新增 <code>pi-v1.4.0/</code>，不改动原有三个源码检出点。</p>
 <h3>本书说的“架构”包括什么</h3>
 <p>我们比较模块职责、依赖边界、数据流、状态归属、扩展方式和失败行为，而不是逐条复述所有模型新增、终端按键修复。完整的文件级变更清单另存于 <code>sources/</code>，适合需要穷尽排查时查阅。</p>
 <p>书中区分三类内容：</p>
@@ -244,9 +249,9 @@ blockquote{margin:24px 0;border-left:3px solid var(--brand);padding:1px 20px;col
 <li><strong>示意算术</strong>：用于解释开销的假设工作量，不是实测性能。</li>
 </ul>
 <h3>不要被 diff 数字带偏</h3>
-<p>完整 Git 比较中，v0.9.4 到 v1.3.0 涉及 2,110 个变更文件；v0.99.2 到 v1.3.0 涉及 1,315 个。里面包括测试、文档、生成数据和实验代码删除。尤其 v1.2.0 删除了尚未进入正式发布包的实验性服务端、客户端和插件栈。不能看到大量删除，就断言正式 CLI 已经换成另一个分布式运行时。<a href="#s2">S2</a>、<a href="#s18">S18</a></p>
+<p>完整 Git 比较中，v0.9.4 到 v1.4.0 涉及 2,172 个变更文件；v0.99.2 到 v1.4.0 涉及 1,451 个；单独比较 v1.3.0 到 v1.4.0 则有 343 个。里面包括测试、文档、生成数据和实验代码删除。尤其 v1.2.0 删除了尚未进入正式发布包的实验性服务端、客户端和插件栈。不能看到大量删除，就断言正式 CLI 已经换成另一个分布式运行时。<a href="#s2">S2</a>、<a href="#s18">S18</a></p>
 <p><strong>理解检查：</strong> 如果你以前用的是 v0.99.2，Code Mode 不是 v1.0 才发明的；如果你指的是 v0.9.4，就必须把中间接近一年的 harness 演进算进去。</p>
-<figure><svg style="font-family:Noto Sans CJK SC,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 568" role="img" aria-labelledby="architecture-comparison-title architecture-comparison-desc"><title id="architecture-comparison-title">旧版与新版的分层对照</title><desc id="architecture-comparison-desc">旧版 Agent 经 transport 使用 ai 包中的循环；新版 AgentSession 管理会话，agent 包拥有循环，ai 专注模型接入。</desc><defs><marker id="architecture-comparison-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#1B365D"/></marker></defs><rect width="960" height="568" fill="#faf9f5"/><path d="M230 168 V240" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#architecture-comparison-arrow)"/><path d="M230 328 V400" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#architecture-comparison-arrow)"/><path d="M730 168 V240" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#architecture-comparison-arrow)"/><path d="M730 328 V400" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#architecture-comparison-arrow)"/><rect x="70" y="80" width="320" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="230.0" y="110" text-anchor="middle" font-size="20" fill="#20201d">编码应用</text><text x="230.0" y="153" text-anchor="middle" font-size="15" fill="#6b6a64">旧版 main / TUI</text><rect x="70" y="240" width="320" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="230.0" y="270" text-anchor="middle" font-size="20" fill="#20201d">Agent + Transport</text><text x="230.0" y="313" text-anchor="middle" font-size="15" fill="#6b6a64">状态与传输抽象</text><rect x="70" y="400" width="320" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="230.0" y="430" text-anchor="middle" font-size="20" fill="#20201d">ai：循环与模型接入</text><text x="230.0" y="473" text-anchor="middle" font-size="15" fill="#6b6a64">工具循环在 ai 包内</text><rect x="570" y="80" width="320" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="730.0" y="110" text-anchor="middle" font-size="20" fill="#20201d">AgentSession / 资源 / 扩展</text><text x="730.0" y="153" text-anchor="middle" font-size="15" fill="#6b6a64">树形会话与上下文投影</text><rect x="570" y="240" width="320" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="730.0" y="270" text-anchor="middle" font-size="20" fill="#20201d">agent：Agent 与工具循环</text><text x="730.0" y="313" text-anchor="middle" font-size="15" fill="#6b6a64">通用嵌套调用契约</text><rect x="570" y="400" width="320" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="730.0" y="430" text-anchor="middle" font-size="20" fill="#20201d">ai：多提供商模型接入</text><text x="730.0" y="473" text-anchor="middle" font-size="15" fill="#6b6a64">流式事件与公共消息类型</text><text x="70" y="40" font-size="18" fill="#6b6a64">v0.9.4</text><text x="570" y="40" font-size="18" fill="#6b6a64">v1.3.0 普通 CLI</text><text x="70" y="540" font-size="18" fill="#6b6a64">Code Mode 接在新版工具侧；Durable 不在这条普通 CLI 运行链中。</text></svg><figcaption>旧版与新版架构对照：循环迁到 agent，应用层形成 AgentSession 与扩展体系</figcaption></figure>
+<figure><svg style="font-family:Noto Sans CJK SC,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 568" role="img" aria-labelledby="architecture-comparison-title architecture-comparison-desc"><title id="architecture-comparison-title">旧版与新版的分层对照</title><desc id="architecture-comparison-desc">旧版 Agent 经 transport 使用 ai 包中的循环；新版 AgentSession 管理会话，agent 包拥有循环，ai 专注模型接入。</desc><defs><marker id="architecture-comparison-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#1B365D"/></marker></defs><rect width="960" height="568" fill="#faf9f5"/><path d="M230 168 V240" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#architecture-comparison-arrow)"/><path d="M230 328 V400" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#architecture-comparison-arrow)"/><path d="M730 168 V240" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#architecture-comparison-arrow)"/><path d="M730 328 V400" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#architecture-comparison-arrow)"/><rect x="70" y="80" width="320" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="230.0" y="110" text-anchor="middle" font-size="20" fill="#20201d">编码应用</text><text x="230.0" y="153" text-anchor="middle" font-size="15" fill="#6b6a64">旧版 main / TUI</text><rect x="70" y="240" width="320" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="230.0" y="270" text-anchor="middle" font-size="20" fill="#20201d">Agent + Transport</text><text x="230.0" y="313" text-anchor="middle" font-size="15" fill="#6b6a64">状态与传输抽象</text><rect x="70" y="400" width="320" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="230.0" y="430" text-anchor="middle" font-size="20" fill="#20201d">ai：循环与模型接入</text><text x="230.0" y="473" text-anchor="middle" font-size="15" fill="#6b6a64">工具循环在 ai 包内</text><rect x="570" y="80" width="320" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="730.0" y="110" text-anchor="middle" font-size="20" fill="#20201d">AgentSession / 资源 / 扩展</text><text x="730.0" y="153" text-anchor="middle" font-size="15" fill="#6b6a64">树形会话与上下文投影</text><rect x="570" y="240" width="320" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="730.0" y="270" text-anchor="middle" font-size="20" fill="#20201d">agent：Agent 与工具循环</text><text x="730.0" y="313" text-anchor="middle" font-size="15" fill="#6b6a64">通用嵌套调用契约</text><rect x="570" y="400" width="320" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="730.0" y="430" text-anchor="middle" font-size="20" fill="#20201d">ai：多提供商模型接入</text><text x="730.0" y="473" text-anchor="middle" font-size="15" fill="#6b6a64">流式事件与公共消息类型</text><text x="70" y="40" font-size="18" fill="#6b6a64">v0.9.4</text><text x="570" y="40" font-size="18" fill="#6b6a64">v1.4.0 普通 CLI</text><text x="70" y="540" font-size="18" fill="#6b6a64">Code Mode 接在新版工具侧；Durable 不在这条普通 CLI 运行链中。</text></svg><figcaption>旧版与新版架构对照：循环迁到 agent，应用层形成 AgentSession 与扩展体系</figcaption></figure>
 <p>左边是旧版职责位置，右边是新版普通 CLI 的对应层。这里强调代码归属与装配边界，不表示所有能力都是在单个版本中同时完成迁移。</p>
 <h1 id="chapter-2">第 2 章：v0.9.4 原本是怎样工作的</h1>
 <p><strong>本章目标：先看清旧循环，再理解新增的编排层。</strong></p>
@@ -276,7 +281,7 @@ blockquote{margin:24px 0;border-left:3px solid var(--brand);padding:1px 20px;col
 <p><strong>练习：</strong> Anthropic 流式事件归一化应该放哪里？模型接入层。重画终端一行放哪里？TUI。判断是否继续下一轮模型请求放哪里？Agent 循环。文件位置虽变，职责判断仍然有效。</p>
 <h1 id="chapter-3">第 3 章：当前架构，分清 CLI 与独立基础库</h1>
 <p><strong>本章目标：看到整张地图，但不把相邻模块当作同一条执行链。</strong></p>
-<p>v1.3.0 的 CLI 仍建立在有状态 <code>Agent</code> 上，不过循环已经和 Agent 放到一起：<strong><code>packages/agent/src/agent-loop.ts</code></strong>。编码应用层提供 <code>AgentSession</code>、会话持久化、上下文投影、资源加载、扩展、模型运行时和不同交互接口。<a href="#s6">S6</a>、<a href="#s7">S7</a></p>
+<p>v1.4.0 的 CLI 仍建立在有状态 <code>Agent</code> 上，不过循环已经和 Agent 放到一起：<strong><code>packages/agent/src/agent-loop.ts</code></strong>。编码应用层提供 <code>AgentSession</code>、会话持久化、上下文投影、资源加载、扩展、模型运行时和不同交互接口。<a href="#s6">S6</a>、<a href="#s7">S7</a></p>
 <figure><svg style="font-family:Noto Sans CJK SC,system-ui,sans-serif" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" role="img" aria-labelledby="current-stack-title current-stack-desc"><title id="current-stack-title">普通 CLI 的运行时地图</title><desc id="current-stack-desc">接口进入 AgentSession，后者使用树形会话、Agent 循环和扩展工具，Code Mode 是工具侧编排层。</desc><defs><marker id="current-stack-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#1B365D"/></marker></defs><rect width="960" height="540" fill="#faf9f5"/><path d="M480 112 V148" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#current-stack-arrow)"/><path d="M360 192 H280" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#current-stack-arrow)"/><path d="M600 192 H680" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#current-stack-arrow)"/><path d="M420 236 V248 Q420 256 412 256 H248 Q240 256 240 264 V276" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#current-stack-arrow)"/><path d="M540 236 V248 Q540 256 548 256 H712 Q720 256 720 264 V276" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#current-stack-arrow)"/><path d="M240 364 V404" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#current-stack-arrow)"/><path d="M720 364 V404" fill="none" stroke="#1B365D" stroke-width="2"  marker-end="url(#current-stack-arrow)"/><rect x="360" y="24" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="480.0" y="54" text-anchor="middle" font-size="20" fill="#20201d">TUI / JSON / RPC</text><text x="480.0" y="97" text-anchor="middle" font-size="15" fill="#6b6a64">或应用内 SDK</text><rect x="360" y="148" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="480.0" y="178" text-anchor="middle" font-size="20" fill="#20201d">AgentSession</text><text x="480.0" y="221" text-anchor="middle" font-size="15" fill="#6b6a64">上下文、队列、扩展生命周期</text><rect x="40" y="148" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="160.0" y="178" text-anchor="middle" font-size="20" fill="#20201d">SessionManager</text><text x="160.0" y="221" text-anchor="middle" font-size="15" fill="#6b6a64">活动分支、压缩、投影</text><rect x="680" y="148" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="800.0" y="178" text-anchor="middle" font-size="20" fill="#20201d">资源与模型运行时</text><text x="800.0" y="221" text-anchor="middle" font-size="15" fill="#6b6a64">设置、skills、providers</text><rect x="120" y="276" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="240.0" y="306" text-anchor="middle" font-size="20" fill="#20201d">Agent 循环</text><text x="240.0" y="349" text-anchor="middle" font-size="15" fill="#6b6a64">packages/agent</text><rect x="600" y="276" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="720.0" y="306" text-anchor="middle" font-size="20" fill="#20201d">工具执行管线</text><text x="720.0" y="349" text-anchor="middle" font-size="15" fill="#6b6a64">校验与扩展钩子</text><rect x="120" y="404" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="240.0" y="434" text-anchor="middle" font-size="20" fill="#20201d">模型提供商</text><text x="240.0" y="477" text-anchor="middle" font-size="15" fill="#6b6a64">packages/ai</text><rect x="600" y="404" width="240" height="88" rx="6" fill="#faf9f5" stroke="#1B365D" stroke-width="1.5"/><text x="720.0" y="434" text-anchor="middle" font-size="20" fill="#20201d">Code Mode / MCP</text><text x="720.0" y="477" text-anchor="middle" font-size="15" fill="#6b6a64">内置扩展及独立库</text></svg><figcaption>当前普通 CLI 的运行时职责图</figcaption></figure>
 <p>这张图是职责图，不是完整 npm 依赖图。Code Mode 和 MCP 通过 CLI 的内置扩展接入，没有替换 Agent 或模型接入层。</p>
 <h3>每个包负责什么</h3>
@@ -405,6 +410,12 @@ blockquote{margin:24px 0;border-left:3px solid var(--brand);padding:1px 20px;col
 </code></pre>
 <p>Code Mode 是<strong>在信息进入模型之前做减量</strong>；压缩是在上下文已经积累后，把早期内容总结成摘要。前者不能替代后者。普通工具调用也可以先截断输出；Code Mode 更适合按数据含义做结构化筛选。<a href="#s12">S12</a></p>
 <p>例如运行测试得到很长日志。工具截断保留头尾，不知道你只关心三个失败断言；脚本可从结构化结果中选出失败项，再让模型理解原因。但如果你把全部日志 <code>text()</code> 出去，就没有获得这部分上下文收益。</p>
+<h3>v1.4.0：何时压缩，与摘要能输出多长是两回事</h3>
+<p><code>compaction.reserveTokens</code> 仍决定自动压缩何时开始，不再给摘要请求套一个按它计算的固定输出帽子。v1.3.0 的主摘要曾取 <code>floor(0.8 × reserveTokens)</code> 与模型输出上限中的较小者；推理内容吃掉额度时，正文摘要可能尚未完成就结束。v1.4.0 改用模型输出上限，并在必要时为输入与输出共同适配上下文窗口。因此“移除固定帽子”不表示无限输出，也不表示摘要一定成功。<a href="#s12">S12</a>、<a href="#s28">S28</a></p>
+<p>用教学数值手算：上下文窗口 128,000，预留 16,384，则超过 111,616 时触发自动压缩；旧主摘要的比例帽子约为 13,107。新版不会因为相同预留值，就把摘要仍固定限制在 13,107。扩大预留值主要让压缩更早发生，不应继续用它间接调整摘要长度。</p>
+<p>分支总结也采用新输出预算。导出的 <code>generateSummary()</code> 和 <code>generateSummaryWithUsage()</code> 为兼容旧调用保留参数位置，但忽略原来的 <code>reserveTokens</code> 参数；维护自定义调用时要重新核对意图。<code>/compact 保留未解决问题</code> 之类指令也会传给被切开的回合前缀摘要，修复了此前这部分忽略指令的问题。</p>
+<h3>v1.4.0：截断恢复后，工具消息仍要成对</h3>
+<p>模型在输出上限处被截断，可能留下不完整的工具调用。历史转换不能只丢掉调用请求，却把对应工具结果交给下一轮 provider；孤立结果会使后续请求持续被拒绝。v1.4.0 修复了这条恢复路径。此处说的是模型响应截断后的协议一致性，不是工具长输出被截断后的 JSON 解析问题。<a href="#s2">S2</a></p>
 <h3>什么时候才算真的结束</h3>
 <p>SDK 的 <code>agent_end</code> 只代表一次底层 Agent 运行结束，随后还可能发生自动恢复、重试或排队工作。集成程序要确认 Pi 不再自动继续，应关注 <strong><code>agent_settled</code></strong>。把两者当成同一个事件，会导致 UI 过早解除忙碌状态或脚本过早退出。<a href="#s9">S9</a></p>
 <p><strong>理解检查：</strong> 从树中切回旧节点，会不会回滚已经写入的文件？不会。会话分支描述对话历史，不是文件系统快照。</p>
@@ -475,7 +486,7 @@ text(results.map((r, i) =&gt; r.status === &quot;fulfilled&quot;
 <li>结果被转换成脚本值，返回 VM；脚本选择性输出。</li>
 <li>executor 关闭沙箱、处理状态写入、截断输出、保存图片、生成外层工具结果。</li>
 </ol>
-<p>在 v1.3.0 的 <code>execute.ts</code> 中，关键语句是：</p>
+<p>在 v1.4.0 的 <code>execute.ts</code> 中，关键语句仍是：</p>
 <pre><code class="language-ts">const outcome = await ctx.executeTool(tool.name, args, { signal: callSignal });
 </code></pre>
 <p>它解释了为什么“脚本里的工具调用”不是偷偷绕过工具链直接执行函数。已有扩展实现的拦截与权限确认仍可以生效。不过 Pi <strong>没有默认对每次调用逐一确认的内置权限系统</strong>；这里说的是扩展钩子可以执行权限策略，不是默认已经有一层强制审批。<a href="#s14">S14</a>、<a href="#s15">S15</a>、<a href="#s25">S25</a></p>
@@ -669,8 +680,13 @@ text({ count });
 <p>如果后面 throw，状态写入不提交；但之前通过 <code>write</code> 修改的文件依旧可能已经变更。所以“失败不提交 store”绝不等于“失败回滚整个脚本”。同样，在分支 A 保存的游标不会自动出现在从早先节点分出的 B，但文件系统仍是共享现实。</p>
 <p>适合存：查询游标、选中的 ID、短摘要。不要存大型日志、图片 base64、完整仓库文件；大数据应由文件或外部服务承载。</p>
 <h3>取消不代表 worker 已经退出</h3>
-<p>CLI 当前最多允许同一 Pi 进程中两个 Code Mode worker 存活。Bun 下，某些不轮询中断的内建操作可能在返回取消结果后继续运行，直到该操作结束。v1.3.0 的修复把“对用户立即返回取消”和“实际 worker 退出后释放名额”拆开，避免重复取消积累残留 worker。<a href="#s2">S2</a>、<a href="#s13">S13</a>、<a href="#s14">S14</a></p>
+<p>CLI 默认最多允许同一 Pi 进程中两个 Code Mode worker 存活，跨会话共享；v1.4.0 可以用环境变量 <code>PI_CODEMODE_MAX_WORKERS</code> 指定正整数上限，非法值回退到默认 2。Bun 下，某些不轮询中断的内建操作可能在返回取消结果后继续运行，直到该操作结束。v1.3.0 的修复把“对用户立即返回取消”和“实际 worker 退出后释放名额”拆开，避免重复取消积累残留 worker。<a href="#s2">S2</a>、<a href="#s13">S13</a>、<a href="#s14">S14</a></p>
 <p>这个区别很通用：<strong>响应完成、任务停止、资源回收完成，是三个不同时间点。</strong> 不能在 timeout 返回的瞬间就把并发名额无条件释放。</p>
+<h3>v1.4.0：容量用尽时先排队，不是立即失败</h3>
+<p>v1.3.0 引入真实 worker 数量限制，但名额满时会立即拒绝新脚本。v1.4.0 的 <code>reserveCodemodeWorker()</code> 先把等待者加入队列；<code>admitCodemodeWorkers()</code> 按到达顺序放行，<code>releaseCodemodeWorker()</code> 在实际释放后继续准入。<a href="#s26">S26</a></p>
+<p>等待最多 60 秒，而且计入脚本的整体 <code>timeout_ms</code>。假设脚本总时限 10 秒，排队用掉 8 秒，执行最多只剩约 2 秒；不会在获取名额后再获得一份全新的 10 秒。超时或取消的等待者会从队列移除，没有获得名额就不启动 VM。</p>
+<p>“两个 worker”不是“脚本里只能并发两个工具”。一个脚本里的独立工具调用不逐项占用这两个名额；<code>models.classify()</code> 与 <code>models.generateImages()</code> 则另有每脚本最多 4 项在途调用的限制。提高 worker 上限会增加潜在内存与外部调用压力，不是免费的吞吐提升。</p>
+<p>排队也不等于解决所有相互等待：脚本持有 worker，又等同进程中的另一个脚本获取名额，仍可能形成资源等待。60 秒等待上限提供失败出口，不提供无限递归子代理能力；脚本不能直接启动另一个 <code>codemode</code>。</p>
 <h3>四类常见错误的处置</h3>
 <table>
 <thead>
@@ -692,9 +708,9 @@ text({ count });
 <td>换结构化工具或缩小读取内容</td>
 </tr>
 <tr>
-<td>worker limit reached</td>
-<td>是否还有运行或退出中的 worker</td>
-<td>等已有 worker 退出，不做高频重试</td>
+<td>等待空闲 worker 超时</td>
+<td>全进程名额、残留 worker、相互等待和总 deadline</td>
+<td>v1.4.0 已自动排队；先查占用，不做高频重试</td>
 </tr>
 <tr>
 <td>超时或部分成功</td>
@@ -727,6 +743,37 @@ export default function (pi: ExtensionAPI) {
 <h3>Provider 仍然承担协议适配</h3>
 <p>Code Mode 不会消除 Anthropic、OpenAI、Google 等协议差异。<code>ai</code> 层继续负责模型接入、流式归一化与内容转换。v1.3.0 切换模型时会丢弃由另一模型产生的历史 thinking 块，避免当普通文本交给新模型；特定提供商的缓存保持也是 provider 相关行为，不能推导成“所有模型切换都无代价”。<a href="#s2">S2</a></p>
 <p>脚本中的 <code>models.*</code> 可访问模型目录、运行分类器、生成图片，但不能把聊天模型当作任意子 Agent 在脚本中调用。分类和生成图片可能计费，其 usage 会纳入会话成本；要检查 <code>stopReason</code> 与 <code>errorMessage</code>。图片要用 <code>image(block)</code> 展示，不要用 <code>text()</code> 打印 base64。<a href="#s10">S10</a></p>
+<h3>v1.4.0：把图片交给分类器，而非打印 base64</h3>
+<p><code>models.classify()</code> 新增 <code>images</code> 输入，适用于受支持的 Jev、Clef 服务和具有相应能力的模型。不能因为模型类别是 classifier，就认定它支持图片：先查目录中 <code>input</code> 是否包含 <code>&quot;image&quot;</code>，再按 provider 核对格式与数量限制。图片分类与生成图片是两项不同能力。<a href="#s10">S10</a>、<a href="#s27">S27</a></p>
+<p>下面是 <code>examples/scripts/06-classify-image.js</code> 的契约示例。实际运行需要可用的图片分类模型、对应凭据和本地 <code>screenshot.png</code>，可能产生费用：</p>
+<pre><code class="language-js">const candidates = await models.getAvailableOfType(&quot;classifier&quot;);
+const vision = candidates.find(m =&gt; m.input?.includes(&quot;image&quot;));
+if (!vision) throw new Error(&quot;没有可用的图片分类器&quot;);
+const photo = await tools.read({ path: &quot;screenshot.png&quot; });
+if (photo.type !== &quot;image&quot;) throw new Error(&quot;需要图片块&quot;);
+const result = await models.classify(vision, {
+  state: { task: &quot;检查页面布局&quot; },
+  images: [photo],
+  questions: {
+    broken: {
+      type: &quot;bool&quot;,
+      instructions: &quot;图片中是否有重叠或被截断的内容？&quot;,
+      criteria: { true: &quot;存在布局缺陷&quot;, false: &quot;未发现布局缺陷&quot; },
+    },
+  },
+});
+if (result.stopReason !== &quot;stop&quot;) {
+  throw new Error(result.errorMessage ?? result.stopReason);
+}
+const answer = result.answers.broken;
+if (answer?.type !== &quot;bool&quot;) throw new Error(&quot;分类回答类型不符&quot;);
+text({ probability: answer.probability });
+</code></pre>
+<p><code>probability</code> 是模型判断的概率，不是经过本书验证的页面缺陷率，也不能证明图片没有问题。本书仅用替身检查调用结构、错误处理和不输出图片内容，没有调用真实分类服务。</p>
+<p>代理兼容尤其需要注意：各 System One 服务接收图片的格式不同。<code>compat.imageInput</code> 和 <code>sendImageOptInHeader</code> 可在 provider 层配置；直接把请求改发 OpenRouter，却继续使用 TypeSafe 的 assets 形态，可能出现请求成功但图片被忽略。v1.4.0 新增的 <code>models-configuration.md</code> 从 schema 生成字段参考，按实际代理协议查证，不猜兼容选项。<a href="#s29">S29</a></p>
+<h3>恢复会话与扩展弹窗也有边界修复</h3>
+<p>v1.3.0 已恢复分支记录过的活动工具；v1.4.0 进一步处理工具注册晚于分支记录的情况，例如会话开始后新装扩展。分支未显式增删的工具默认可活动，但 <code>defaultActive: false</code> 仍应生效。恢复后要检查实际可调用集合，不能把这项修复理解成强制启用所有工具。</p>
+<p>交互式扩展同时打开 <code>select</code>、<code>confirm</code>、<code>input</code>、<code>editor</code> 或 inline <code>custom()</code> 时，新弹窗不再让先前 Promise 永久悬挂；关闭当前弹窗会回到前一个。这修的是交互生命周期，不是给扩展增加 OS 权限隔离。<a href="#s2">S2</a></p>
 <h3>选择哪种集成方式</h3>
 <table>
 <thead>
@@ -778,9 +825,9 @@ export default function (pi: ExtensionAPI) {
 <h3>SDK 的一个关键差异</h3>
 <p>CLI 会加载内置 Code Mode、tool-search、MCP 扩展；SDK 默认不会替你装好这三者。需要通过 <code>DefaultResourceLoader.extensionFactories</code> 添加，并在建立会话后 <code>bindExtensions()</code>，让 <code>session_start</code> 触发 MCP 后台连接。本书 <code>examples/sdk-codemode-mcp.ts</code> 保存了该版本官方示例。<a href="#s20">S20</a></p>
 <p><strong>设计练习：</strong> “每次调用 shell 前做企业策略校验”应该写进临时 Code Mode 脚本吗？不应该。应在工具边界实现可审计的扩展策略，并用 OS/容器限制补上真正的权限边界。模型生成的代码不是强制执行安全策略的地方。</p>
-<h1 id="chapter-10">第 10 章：从 0.99.2 到 1.3.0，具体差了什么</h1>
-<p><strong>本章目标：避免把长期演进和最近两周的变化混在一起。</strong></p>
-<p>如果你的“0.9.xxx”其实是 0.99.2，前面很多机制你已经有了：Code Mode、独立 <code>pi-codemode</code> 包、工具发现、MCP、树形会话、统一扩展，并不是升级到 1.3.0 才第一次出现。下面只看这个较短区间。<a href="#s2">S2</a>、<a href="#s21">S21</a></p>
+<h1 id="chapter-10">第 10 章：从 0.99.2 到 1.4.0，具体差了什么</h1>
+<p><strong>本章目标：把长期演进、1.3.0 基线和 1.4.0 增量分开。</strong></p>
+<p>如果你的“0.9.xxx”其实是 0.99.2，前面很多机制你已经有了：Code Mode、独立 <code>pi-codemode</code> 包、工具发现、MCP、树形会话、统一扩展，并不是升级到 1.4.0 才第一次出现。下面只看这个较短区间。<a href="#s2">S2</a>、<a href="#s21">S21</a></p>
 <table>
 <thead>
 <tr>
@@ -845,8 +892,36 @@ export default function (pi: ExtensionAPI) {
 <td>恢复会话时保留活动工具；内部 Pi 依赖固定到精确版本</td>
 <td>恢复后的工具集更一致，减少混装不同内部版本</td>
 </tr>
+<tr>
+<td>1.4.0</td>
+<td>worker 满时排队，最多等待 60 秒；可调整全进程 worker 上限</td>
+<td>并行脚本不再立即因容量不足失败，等待仍消耗总 deadline</td>
+</tr>
+<tr>
+<td>1.4.0</td>
+<td>压缩及分支摘要使用模型输出上限</td>
+<td><code>reserveTokens</code> 只决定压缩触发时机，不再间接限制摘要长度</td>
+</tr>
+<tr>
+<td>1.4.0</td>
+<td>图片分类输入、provider 分类器兼容字段、配置字段参考</td>
+<td>可用结构化问题检查图片，但要核对模型能力、协议与费用</td>
+</tr>
+<tr>
+<td>1.4.0</td>
+<td>截断工具消息、晚注册扩展工具与并发弹窗修复</td>
+<td>恢复后消息和工具更一致，交互 Promise 不再被新弹窗遗留</td>
+</tr>
 </tbody>
 </table>
+<h3>从 v1.3.0 升到 v1.4.0，优先验哪四件事</h3>
+<ol>
+<li>在隔离测试进程中占满 worker，再发新脚本，观察它等待后启动或到期失败；检查等待时间是否计入总 deadline。</li>
+<li>用支持推理的模型执行长会话压缩，确认没有继续将 <code>reserveTokens</code> 当摘要长度旋钮；对分割回合检查自定义摘要指令。</li>
+<li>对图片分类保留“无可用模型”“服务失败”“仅文字模型”反例，不把 Promise fulfilled 当业务成功。</li>
+<li>从旧会话恢复、切换树形分支并加载扩展，核对活动工具；注入模型输出截断后核对工具请求与结果仍然配对。</li>
+</ol>
+<p>这些是集成验收建议，不是本轮全部已运行的测试。1.4.0 的 Rex 终端支持、退出模式清理、Linux 挂起后的剪贴板和中文标点旁 Markdown 渲染也有改善，但没有改变前面所画的 Agent / AgentSession / Code Mode 职责分层。<a href="#s2">S2</a></p>
 <h3>“约少 40% token”到底指什么</h3>
 <p>v1.0.0 变更日志给出的例子是：默认工具并启用 Code Mode 时，一个 GPT-5.6 请求的提示规模从约 5,300 降到约 3,300 token。减少来自说明精简、按需阅读模型 API 文档、避免重复声明等。它是上游记录中的特定场景，不是本书实测，更不是任何项目、模型、工具数量下都少 40%。<a href="#s2">S2</a></p>
 <h3>三个明确的迁移断点</h3>
@@ -953,16 +1028,22 @@ try {
 <li>[ ] shell 判断退出码，MCP 判断 <code>isError</code>。</li>
 <li>[ ] options 行确实在脚本第一行。</li>
 <li>[ ] 需要保存的图片调用 <code>image()</code>，不把 base64 当文本输出。</li>
-<li>[ ] 自定义沙箱资源池按真实 worker 退出释放容量。</li>
+<li>[ ] 自定义沙箱资源池按真实 worker 退出释放容量，排队不重置总 deadline。</li>
+<li>[ ] <code>reserveTokens</code> 按触发阈值配置，不继续当摘要输出帽子。</li>
+<li>[ ] 图片分类核对 <code>input</code>、provider 图片协议、错误结果与 usage。</li>
 <li>[ ] 自定义编排器声明正确的 <code>reachesTools</code>。</li>
 <li>[ ] 旧 experimental harness 或 server/client 导出没有继续被引用。</li>
 <li>[ ] 恢复会话后验证活动工具与过滤策略，不仅看启动命令。</li>
 <li>[ ] SDK 明确添加需要的内置扩展并绑定生命周期。</li>
 </ul>
 <h3>12.3 在不改安装的情况下阅读本次下载</h3>
-<p>以下目录已经准备好，不需要再次 clone：</p>
-<pre><code class="language-sh">cd /home/stardust/Documents/learning/pi-mono-evolution
+<p>以下命令核对本机保留的研究副本；公开电子书不附完整 Git 目录。其他读者可先下载本版源码 ZIP，或按固定标签准备自己的副本。</p>
+<pre><code class="language-sh"># 在电子书仓库根目录执行。
 
+git -C sources/pi-v1.4.0 describe --tags --exact-match
+# v1.4.0
+
+# 上一版参照仍保留：
 git -C sources/pi-mono describe --tags --exact-match
 # v1.3.0
 
@@ -972,7 +1053,7 @@ git -C sources/pi-v0.9.4 describe --tags --exact-match
 git -C sources/pi-v0.99.2 describe --tags --exact-match
 # v0.99.2
 </code></pre>
-<p><code>pi-mono-v1.3.0.zip</code> 是不包含依赖与 Git 历史的源码快照，方便离线拷贝。安装依赖或更新全局 Pi 是独立操作，本次没有执行。</p>
+<p><code>pi-mono-v1.4.0.zip</code> 是不包含依赖与 Git 历史的源码快照，方便离线拷贝。安装依赖或更新全局 Pi 是独立操作，本次没有执行。</p>
 <h3>实验 A：开启 Code Mode，但保留默认工具</h3>
 <p>在确认安装版本支持这些参数后，可运行：</p>
 <pre><code class="language-sh">pi --tools +codemode
@@ -987,7 +1068,7 @@ git -C sources/pi-v0.99.2 describe --tags --exact-match
 <p>本书提供 <code>examples/run-checks.mjs</code>，使用 Node 内置断言和模拟工具运行脚本文件：</p>
 <pre><code class="language-sh">node examples/run-checks.mjs
 </code></pre>
-<p>它检查并行读取与字段筛选、部分失败保留、非零 shell 退出码、成功/失败状态提交，以及输出减量算术。它不是 QuickJS 的安全测试，不调用外部服务，也不能证明 MCP 或真实沙箱无缺陷。Code Mode 脚本放在 <code>examples/scripts/</code>，可以阅读或交给 Pi 使用。</p>
+<p>它检查并行读取与字段筛选、部分失败保留、非零 shell 退出码、成功/失败状态提交，图片分类的成功与失败契约，以及输出减量算术。它不是 QuickJS 的安全测试，不调用外部服务，也不能证明 MCP 或真实沙箱无缺陷。Code Mode 脚本放在 <code>examples/scripts/</code>，可以阅读或交给 Pi 使用。</p>
 <h3>实验 C：观察分支与外部世界的区别</h3>
 <p>在临时项目里执行一个脚本，保存小游标并写入测试文件。回到保存前的会话节点创建另一分支，再 <code>load()</code>：游标沿新分支重建，但文件不会因此恢复。只使用可丢弃文件，不要拿生产数据做这个实验。</p>
 <h3>实验 D：按官方 SDK 示例接上 MCP</h3>
@@ -1065,12 +1146,12 @@ git -C sources/pi-v0.99.2 describe --tags --exact-match
 <h1 id="sources">来源索引与核查范围</h1>
 <p>所有文件链接固定到对应版本标签。方括号来源编号可从正文跳转；源码副本位于同目录 <code>sources/</code>。</p>
 <div class="source" id="s1">
-<p><strong>[S1] <a href="https://github.com/earendil-works/pi/releases/tag/v1.3.0">最新发布与固定标签</a></strong></p>
-<p>最新正式发布核查：v1.3.0，2026-10-15；详细元数据见 versions.json。</p>
+<p><strong>[S1] <a href="https://github.com/earendil-works/pi/releases/tag/v1.4.0">最新发布与固定标签</a></strong></p>
+<p>本版正式发布端点：v1.4.0，2026-10-21；详细元数据见 versions.json。</p>
 </div>
 <div class="source" id="s2">
-<p><strong>[S2] <a href="https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/CHANGELOG.md">coding-agent 版本变更日志</a></strong></p>
-<p>版本时间线、Code Mode/MCP 引入、1.0 至 1.3 的功能与修复。</p>
+<p><strong>[S2] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/CHANGELOG.md">coding-agent 版本变更日志</a></strong></p>
+<p>版本时间线、Code Mode/MCP 引入、1.0 至 1.4 的功能与修复。</p>
 </div>
 <div class="source" id="s3">
 <p><strong>[S3] <a href="https://github.com/earendil-works/pi/blob/v0.9.4/packages/agent/src/agent.ts">旧版有状态 Agent</a></strong></p>
@@ -1085,51 +1166,51 @@ git -C sources/pi-v0.99.2 describe --tags --exact-match
 <p>JSONL 记录与复制到新文件的分支方式。</p>
 </div>
 <div class="source" id="s6">
-<p><strong>[S6] <a href="https://github.com/earendil-works/pi/blob/v1.3.0/packages/agent/README.md">当前 Agent 核心文档</a></strong></p>
+<p><strong>[S6] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/agent/README.md">当前 Agent 核心文档</a></strong></p>
 <p>消息变换、事件、并行默认执行及顺序保证。</p>
 </div>
 <div class="source" id="s7">
-<p><strong>[S7] <a href="https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/docs/how-pi-works.md">How Pi Works</a></strong></p>
+<p><strong>[S7] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/how-pi-works.md">How Pi Works</a></strong></p>
 <p>当前主运行链、上下文、会话和接口。</p>
 </div>
 <div class="source" id="s8">
-<p><strong>[S8] <a href="https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/package.json">普通 CLI 包清单与依赖</a></strong></p>
+<p><strong>[S8] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/package.json">普通 CLI 包清单与依赖</a></strong></p>
 <p>依赖精确固定；不依赖 pi-durable、pi-env 或 chord。其他包的 package.json 同保存在下载源码中。</p>
 </div>
 <div class="source" id="s9">
-<p><strong>[S9] <a href="https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/docs/sdk.md">SDK 生命周期与状态</a></strong></p>
+<p><strong>[S9] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/sdk.md">SDK 生命周期与状态</a></strong></p>
 <p>AgentSession、SessionManager、agent_settled、资源加载与内置扩展差异。</p>
 </div>
 <div class="source" id="s10">
-<p><strong>[S10] <a href="https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/docs/codemode.md">Code Mode 用户与脚本契约</a></strong></p>
+<p><strong>[S10] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/codemode.md">Code Mode 用户与脚本契约</a></strong></p>
 <p>全局接口、返回值、输出、store、models 与限制。</p>
 </div>
 <div class="source" id="s11">
-<p><strong>[S11] <a href="https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/docs/session-format.md">当前会话文件格式</a></strong></p>
+<p><strong>[S11] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/session-format.md">当前会话文件格式</a></strong></p>
 <p>树形条目、压缩、context_edit、自定义状态、上下文投影。</p>
 </div>
 <div class="source" id="s12">
-<p><strong>[S12] <a href="https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/docs/compaction.md">压缩机制</a></strong></p>
+<p><strong>[S12] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/compaction.md">压缩机制</a></strong></p>
 <p>阈值、保留边界、摘要、分支总结与恢复。</p>
 </div>
 <div class="source" id="s13">
-<p><strong>[S13] <a href="https://github.com/earendil-works/pi/blob/v1.3.0/packages/codemode/README.md">独立 Code Mode 沙箱库</a></strong></p>
+<p><strong>[S13] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/codemode/README.md">独立 Code Mode 沙箱库</a></strong></p>
 <p>worker 与 QuickJS、独立使用、Cloudflare、确定性 start 和结果契约。</p>
 </div>
 <div class="source" id="s14">
-<p><strong>[S14] <a href="https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/src/extensions/codemode/execute.ts">Code Mode executor 实现</a></strong></p>
+<p><strong>[S14] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/src/extensions/codemode/execute.ts">Code Mode executor 实现</a></strong></p>
 <p>ctx.executeTool 调用链、结果适配、状态提交、worker 数量控制。</p>
 </div>
 <div class="source" id="s15">
-<p><strong>[S15] <a href="https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/docs/extensions.md">扩展、嵌套调用与工具契约</a></strong></p>
+<p><strong>[S15] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/extensions.md">扩展、嵌套调用与工具契约</a></strong></p>
 <p>exposure、prepareLoadout、reachesTools、状态、事件与权限扩展。</p>
 </div>
 <div class="source" id="s16">
-<p><strong>[S16] <a href="https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/docs/mcp.md">MCP 接入与 exposure</a></strong></p>
+<p><strong>[S16] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/mcp.md">MCP 接入与 exposure</a></strong></p>
 <p>命名、连接时机、发现、过滤、完整 MCP 返回对象、OAuth 与替换扩展。</p>
 </div>
 <div class="source" id="s17">
-<p><strong>[S17] <a href="https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/docs/settings.md">设置与工具呈现</a></strong></p>
+<p><strong>[S17] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/settings.md">设置与工具呈现</a></strong></p>
 <p>defaultTools、codemode.mode、inlineBudget、TUI 与会话设置。</p>
 </div>
 <div class="source" id="s18">
@@ -1137,35 +1218,51 @@ git -C sources/pi-v0.99.2 describe --tags --exact-match
 <p>2026-10-12：客户端、协议、服务端实验栈清理；不等于正式 CLI 换内核。</p>
 </div>
 <div class="source" id="s19">
-<p><strong>[S19] <a href="https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/docs/cli.md">命令行参考</a></strong></p>
+<p><strong>[S19] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/cli.md">命令行参考</a></strong></p>
 <p>启用 Code Mode、增量工具选择、MCP 排除、运行模式。</p>
 </div>
 <div class="source" id="s20">
-<p><strong>[S20] <a href="https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/examples/sdk/14-codemode-mcp.ts">官方 SDK Code Mode/MCP 示例</a></strong></p>
+<p><strong>[S20] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/examples/sdk/14-codemode-mcp.ts">官方 SDK Code Mode/MCP 示例</a></strong></p>
 <p>添加三个内置扩展、启用工具、bindExtensions、释放资源。</p>
 </div>
 <div class="source" id="s21">
-<p><strong>[S21] <a href="https://github.com/earendil-works/pi/blob/v1.3.0/packages/codemode/CHANGELOG.md">独立 Code Mode 包的版本变化</a></strong></p>
+<p><strong>[S21] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/codemode/CHANGELOG.md">独立 Code Mode 包的版本变化</a></strong></p>
 <p>start、portable、remote、未知成员、冻结内建对象、close 与 worker 生命周期。</p>
 </div>
 <div class="source" id="s22">
-<p><strong>[S22] <a href="https://github.com/earendil-works/pi/blob/v1.3.0/packages/agent/CHANGELOG.md">Agent 包迁移与清理记录</a></strong></p>
+<p><strong>[S22] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/agent/CHANGELOG.md">Agent 包迁移与清理记录</a></strong></p>
 <p>旧 transport 删除、并行工具执行、1.0.0 移除实验 harness 导出。</p>
 </div>
 <div class="source" id="s23">
-<p><strong>[S23] <a href="https://github.com/earendil-works/pi/blob/v1.3.0/packages/durable/README.md">实验性 Durable Harness</a></strong></p>
+<p><strong>[S23] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/durable/README.md">实验性 Durable Harness</a></strong></p>
 <p>任务与存储、Code Mode journal/replay、幂等与 replay 策略、独立 API。</p>
 </div>
 <div class="source" id="s24">
-<p><strong>[S24] <a href="https://github.com/earendil-works/pi/blob/v1.3.0/packages/env/README.md">远程执行环境 pi-env</a></strong></p>
+<p><strong>[S24] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/env/README.md">远程执行环境 pi-env</a></strong></p>
 <p>SSH、Rust daemon、RemoteExecutionEnv、host key 与远程语义。</p>
 </div>
 <div class="source" id="s25">
-<p><strong>[S25] <a href="https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/docs/security.md">安全与项目可信决策</a></strong></p>
+<p><strong>[S25] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/security.md">安全与项目可信决策</a></strong></p>
 <p>无默认逐调用审批；OS 权限、容器、可信资源与 prompt injection 边界。</p>
 </div>
+<div class="source" id="s26">
+<p><strong>[S26] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/src/extensions/codemode/execute.ts">v1.4.0 worker 排队与容量准入</a></strong></p>
+<p>reserveCodemodeWorker、FIFO 放行、60 秒等待、总 deadline 与 PI_CODEMODE_MAX_WORKERS。</p>
+</div>
+<div class="source" id="s27">
+<p><strong>[S27] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/models.md">v1.4.0 分类器图片能力与供应商边界</a></strong></p>
+<p>input 能力、图片格式、System One 接入差异、usage 与费用。</p>
+</div>
+<div class="source" id="s28">
+<p><strong>[S28] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/src/core/compaction/compaction.ts">v1.4.0 摘要输出预算实现</a></strong></p>
+<p>移除固定输出比例帽子，保留旧函数参数位置，将自定义指令传入回合前缀摘要。</p>
+</div>
+<div class="source" id="s29">
+<p><strong>[S29] <a href="https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/models-configuration.md">v1.4.0 Models Configuration 字段参考</a></strong></p>
+<p>从 schema 生成的 provider、模型和兼容字段，含分类器图片协议选项。</p>
+</div>
 <h2>核查范围与限制</h2>
-<p>本书对照官方发布 API、三个固定标签、相关包清单、主运行链文档、核心循环及 Code Mode 适配实现，保存了完整 diff 清单。书中代码区分可运行示例与占位伪代码。</p>
+<p>本书对照官方发布 API、四个固定标签、相关包清单、主运行链文档、核心循环及 Code Mode 适配实现，保存了完整 diff 清单。书中代码区分可运行示例与占位伪代码。</p>
 <p>教学脚本使用 Node 和模拟工具验证。HTML、PDF、EPUB 另做渲染或结构检查。没有运行完整上游测试套件，没有部署 Cloudflare 或 SSH 环境，没有用付费模型验证生成质量，没有做沙箱安全审计；上游测量数据明确标注为上游结果。</p>
 <p>优先深入阅读：S7 建立全景；S10 理解脚本契约；S13 研究独立沙箱和部署；S15 理解嵌套工具与扩展；S23 理解实验性持久执行。</p>
 <h2>固定提交</h2>
@@ -1173,6 +1270,7 @@ git -C sources/pi-v0.99.2 describe --tags --exact-match
 <li><code>v0.9.4</code>：<code>a484330cd15e5844dfa42a4749594067128ea0c1</code></li>
 <li><code>v0.99.2</code>：<code>005af57d88ee23b33778f343a9595b32e67ff788</code></li>
 <li><code>v1.3.0</code>：<code>71023aec1546d6d677a65669c5665c0927ce0dd0</code></li>
+<li><code>v1.4.0</code>：<code>4a080252f06caf63a525d7873c5d94d3c23887e0</code></li>
 </ul>
 <p>来源材料为官方仓库中的文档与源码；电子书是整理后的教学解释，不代表项目官方文档。</p>
 <footer>阅读建议：先运行教学检查，再对照固定版本源码核对你需要迁移的接口。下载的是源码，没有修改当前 Pi 安装。</footer></main></div><script>

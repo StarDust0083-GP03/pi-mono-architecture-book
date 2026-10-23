@@ -144,9 +144,19 @@ text({ count });
 
 ### 取消不代表 worker 已经退出
 
-CLI 当前最多允许同一 Pi 进程中两个 Code Mode worker 存活。Bun 下，某些不轮询中断的内建操作可能在返回取消结果后继续运行，直到该操作结束。v1.3.0 的修复把“对用户立即返回取消”和“实际 worker 退出后释放名额”拆开，避免重复取消积累残留 worker。[S2](#s2)、[S13](#s13)、[S14](#s14)
+CLI 默认最多允许同一 Pi 进程中两个 Code Mode worker 存活，跨会话共享；v1.4.0 可以用环境变量 `PI_CODEMODE_MAX_WORKERS` 指定正整数上限，非法值回退到默认 2。Bun 下，某些不轮询中断的内建操作可能在返回取消结果后继续运行，直到该操作结束。v1.3.0 的修复把“对用户立即返回取消”和“实际 worker 退出后释放名额”拆开，避免重复取消积累残留 worker。[S2](#s2)、[S13](#s13)、[S14](#s14)
 
 这个区别很通用：**响应完成、任务停止、资源回收完成，是三个不同时间点。** 不能在 timeout 返回的瞬间就把并发名额无条件释放。
+
+### v1.4.0：容量用尽时先排队，不是立即失败
+
+v1.3.0 引入真实 worker 数量限制，但名额满时会立即拒绝新脚本。v1.4.0 的 `reserveCodemodeWorker()` 先把等待者加入队列；`admitCodemodeWorkers()` 按到达顺序放行，`releaseCodemodeWorker()` 在实际释放后继续准入。[S26](#s26)
+
+等待最多 60 秒，而且计入脚本的整体 `timeout_ms`。假设脚本总时限 10 秒，排队用掉 8 秒，执行最多只剩约 2 秒；不会在获取名额后再获得一份全新的 10 秒。超时或取消的等待者会从队列移除，没有获得名额就不启动 VM。
+
+“两个 worker”不是“脚本里只能并发两个工具”。一个脚本里的独立工具调用不逐项占用这两个名额；`models.classify()` 与 `models.generateImages()` 则另有每脚本最多 4 项在途调用的限制。提高 worker 上限会增加潜在内存与外部调用压力，不是免费的吞吐提升。
+
+排队也不等于解决所有相互等待：脚本持有 worker，又等同进程中的另一个脚本获取名额，仍可能形成资源等待。60 秒等待上限提供失败出口，不提供无限递归子代理能力；脚本不能直接启动另一个 `codemode`。
 
 ### 四类常见错误的处置
 
@@ -154,7 +164,7 @@ CLI 当前最多允许同一 Pi 进程中两个 Code Mode worker 存活。Bun �
 |---|---|---|
 | `tools.X` 不存在 | 拼写、标识符规范、工具是否可达 | 重新发现并描述工具，不反复猜名字 |
 | JSON.parse 失败 | 是否读到截断输出、日志或错误页面 | 换结构化工具或缩小读取内容 |
-| worker limit reached | 是否还有运行或退出中的 worker | 等已有 worker 退出，不做高频重试 |
+| 等待空闲 worker 超时 | 全进程名额、残留 worker、相互等待和总 deadline | v1.4.0 已自动排队；先查占用，不做高频重试 |
 | 超时或部分成功 | 哪些调用已产生副作用 | 查明实际状态，再决定是否重试；写操作需幂等策略 |
 
 # 第 9 章：扩展、模型与界面，哪些没被 Code Mode 替代
@@ -195,6 +205,47 @@ export default function (pi: ExtensionAPI) {
 Code Mode 不会消除 Anthropic、OpenAI、Google 等协议差异。`ai` 层继续负责模型接入、流式归一化与内容转换。v1.3.0 切换模型时会丢弃由另一模型产生的历史 thinking 块，避免当普通文本交给新模型；特定提供商的缓存保持也是 provider 相关行为，不能推导成“所有模型切换都无代价”。[S2](#s2)
 
 脚本中的 `models.*` 可访问模型目录、运行分类器、生成图片，但不能把聊天模型当作任意子 Agent 在脚本中调用。分类和生成图片可能计费，其 usage 会纳入会话成本；要检查 `stopReason` 与 `errorMessage`。图片要用 `image(block)` 展示，不要用 `text()` 打印 base64。[S10](#s10)
+
+### v1.4.0：把图片交给分类器，而非打印 base64
+
+`models.classify()` 新增 `images` 输入，适用于受支持的 Jev、Clef 服务和具有相应能力的模型。不能因为模型类别是 classifier，就认定它支持图片：先查目录中 `input` 是否包含 `"image"`，再按 provider 核对格式与数量限制。图片分类与生成图片是两项不同能力。[S10](#s10)、[S27](#s27)
+
+下面是 `examples/scripts/06-classify-image.js` 的契约示例。实际运行需要可用的图片分类模型、对应凭据和本地 `screenshot.png`，可能产生费用：
+
+```js
+const candidates = await models.getAvailableOfType("classifier");
+const vision = candidates.find(m => m.input?.includes("image"));
+if (!vision) throw new Error("没有可用的图片分类器");
+const photo = await tools.read({ path: "screenshot.png" });
+if (photo.type !== "image") throw new Error("需要图片块");
+const result = await models.classify(vision, {
+  state: { task: "检查页面布局" },
+  images: [photo],
+  questions: {
+    broken: {
+      type: "bool",
+      instructions: "图片中是否有重叠或被截断的内容？",
+      criteria: { true: "存在布局缺陷", false: "未发现布局缺陷" },
+    },
+  },
+});
+if (result.stopReason !== "stop") {
+  throw new Error(result.errorMessage ?? result.stopReason);
+}
+const answer = result.answers.broken;
+if (answer?.type !== "bool") throw new Error("分类回答类型不符");
+text({ probability: answer.probability });
+```
+
+`probability` 是模型判断的概率，不是经过本书验证的页面缺陷率，也不能证明图片没有问题。本书仅用替身检查调用结构、错误处理和不输出图片内容，没有调用真实分类服务。
+
+代理兼容尤其需要注意：各 System One 服务接收图片的格式不同。`compat.imageInput` 和 `sendImageOptInHeader` 可在 provider 层配置；直接把请求改发 OpenRouter，却继续使用 TypeSafe 的 assets 形态，可能出现请求成功但图片被忽略。v1.4.0 新增的 `models-configuration.md` 从 schema 生成字段参考，按实际代理协议查证，不猜兼容选项。[S29](#s29)
+
+### 恢复会话与扩展弹窗也有边界修复
+
+v1.3.0 已恢复分支记录过的活动工具；v1.4.0 进一步处理工具注册晚于分支记录的情况，例如会话开始后新装扩展。分支未显式增删的工具默认可活动，但 `defaultActive: false` 仍应生效。恢复后要检查实际可调用集合，不能把这项修复理解成强制启用所有工具。
+
+交互式扩展同时打开 `select`、`confirm`、`input`、`editor` 或 inline `custom()` 时，新弹窗不再让先前 Promise 永久悬挂；关闭当前弹窗会回到前一个。这修的是交互生命周期，不是给扩展增加 OS 权限隔离。[S2](#s2)
 
 ### 选择哪种集成方式
 

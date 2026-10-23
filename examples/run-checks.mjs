@@ -12,6 +12,7 @@ const state = {};
 const writes = {};
 const tools = {
   read: async ({ path }) => {
+    if (path === 'screenshot.png') return { type: 'image', data: 'fixture-image', mimeType: 'image/png' };
     if (!(path in files)) throw new Error(`ENOENT: ${path}`);
     return files[path];
   },
@@ -19,14 +20,27 @@ const tools = {
   write: async ({ path, content }) => { writes[path] = content; return 'written'; },
 };
 
-async function run(name) {
+const models = {
+  getAvailableOfType: async (type) => {
+    assert.equal(type, 'classifier');
+    return [{ provider: 'fixture', id: 'vision', input: ['text', 'image'] }];
+  },
+  classify: async (_model, context) => {
+    assert.equal(context.images[0].data, 'fixture-image');
+    assert.equal(context.questions.broken.type, 'bool');
+    return { stopReason: 'stop', answers: { broken: { type: 'bool', probability: 0.75 } } };
+  },
+};
+
+async function run(name, modelApi = models) {
   const code = await readFile(new URL(`./scripts/${name}`, import.meta.url), 'utf8');
   const output = [];
   const pending = structuredClone(state);
   try {
-    await new AsyncFunction('tools', 'text', 'load', 'store', code)(
+    await new AsyncFunction('tools', 'text', 'load', 'store', 'models', code)(
       tools, value => output.push(value), key => structuredClone(pending[key]),
       (key, value) => { if (value === undefined) delete pending[key]; else pending[key] = structuredClone(value); },
+      modelApi,
     );
     for (const key of Object.keys(state)) delete state[key];
     Object.assign(state, pending);
@@ -57,5 +71,24 @@ assert.equal(state.inspected, 2); // 失败不提交 store。
 assert.ok(writes['disposable.txt']); // 已完成外部副作用不回滚。
 assert.equal(12 * 20000, 240000);
 assert.equal(12 * 300, 3600);
-console.log('PASS: 5 scripts; field filtering, partial failures, exit code, store commit, persistent side effects, illustrative arithmetic.');
+const classified = await run('06-classify-image.js');
+assert.equal(classified.ok, true);
+assert.deepEqual(classified.output, [{ probability: 0.75 }]);
+assert.ok(!JSON.stringify(classified.output).includes('fixture-image'));
+const classifierFailed = await run('06-classify-image.js', {
+  ...models, classify: async () => ({ stopReason: 'error', errorMessage: 'fixture unavailable' }),
+});
+assert.equal(classifierFailed.ok, false);
+assert.match(classifierFailed.error.message, /fixture unavailable/);
+const noVision = await run('06-classify-image.js', {
+  ...models, getAvailableOfType: async () => [{ input: ['text'] }],
+});
+assert.equal(noVision.ok, false);
+assert.match(noVision.error.message, /没有可用的图片分类器/);
+const wrongAnswer = await run('06-classify-image.js', {
+  ...models, classify: async () => ({ stopReason: 'stop', answers: {} }),
+});
+assert.equal(wrongAnswer.ok, false);
+assert.match(wrongAnswer.error.message, /分类回答类型不符/);
+console.log('PASS: 6 scripts; field filtering, partial failures, exit code, store commit, persistent side effects, image classifier contracts, illustrative arithmetic.');
 console.log('Scope: Node + mock tools only; not a QuickJS, provider, MCP, cloud or security conformance test.');

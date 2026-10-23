@@ -115,7 +115,7 @@ diagram('architecture-comparison','旧版与新版的分层对照','旧版 Agent
     n(70,80,'编码应用','旧版 main / TUI',w=320),n(70,240,'Agent + Transport','状态与传输抽象',w=320),n(70,400,'ai：循环与模型接入','工具循环在 ai 包内',w=320),
     n(570,80,'AgentSession / 资源 / 扩展','树形会话与上下文投影',w=320),n(570,240,'agent：Agent 与工具循环','通用嵌套调用契约',w=320),n(570,400,'ai：多提供商模型接入','流式事件与公共消息类型',w=320)
 ],[('M230 168 V240',False),('M230 328 V400',False),('M730 168 V240',False),('M730 328 V400',False)],height=568,
-labels=[(70,40,'v0.9.4'),(570,40,'v1.3.0 普通 CLI'),(70,540,'Code Mode 接在新版工具侧；Durable 不在这条普通 CLI 运行链中。')])
+labels=[(70,40,'v0.9.4'),(570,40,'v1.4.0 普通 CLI'),(70,540,'Code Mode 接在新版工具侧；Durable 不在这条普通 CLI 运行链中。')])
 
 diagram('cli-package-dependencies','普通 CLI 的实际内部包依赖','coding-agent 直接依赖 agent-core、ai、tui、codemode、mcp；agent-core 继续依赖 ai。此图不把 Durable 或 chord 放进 CLI 依赖链。',[
     n(40,244,'coding-agent','普通 CLI / SDK',w=240,h=120),

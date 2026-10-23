@@ -1,8 +1,8 @@
 # 从工具循环到 Code Mode
 
-## Pi 架构演进：v0.9.4、v0.99.2 与 v1.3.0
+## Pi 架构演进：v0.9.4、v0.99.2 与 v1.4.0
 
-**一部跟着源码读的中文电子书。** 本版依据官方仓库、固定版本源码和发布记录整理，核查日期为 2026 年 10 月 20 日。核查时最新的 GitHub 正式发布为 **v1.3.0**，发布时间为 2026 年 10 月 15 日。本书解释这个版本快照，不把以后 `main` 上的代码混进来。
+**一部跟着源码读的中文电子书。** 本版依据官方仓库、固定版本源码和发布记录整理，核查日期为 2026 年 10 月 23 日，比较端点更新为 **v1.4.0**，正式发布时间为 2026 年 10 月 21 日。保留 v1.3.0 作为上一版参照，本书不把标签之后 `main` 上的代码混进来。
 
 先说结论：Pi 的核心仍然是“模型产生响应，工具执行操作，结果供下一轮模型使用”的循环。变化主要发生在循环外围：树形会话、统一扩展系统、更丰富的工具契约、内置 MCP，以及让模型用 JavaScript 编排工具的 **Code Mode**。最新仓库还提供独立的实验性 Durable 运行时，它可以恢复中断任务，但不是普通 CLI 已经切换过去的新内核。
 
@@ -22,11 +22,12 @@
 | v0.99.0 | 2026-09-29，变更日志 | 内置 Code Mode、工具搜索、MCP 与嵌套工具契约 |
 | v0.99.2 | 2026-09-30，变更日志 | MCP 按需发现，减少启动等待和工具描述变化 |
 | v1.0.0 | 2026-10-01，变更日志 | 更精简的 Code Mode 提示、图像生成、默认全屏 TUI |
-| v1.3.0 | 2026-10-15，正式发布 | 本书最新端点；取消与 worker 数量控制、恢复活动工具集等修复 |
+| v1.3.0 | 2026-10-15，正式发布 | 上一版参照；取消与 worker 数量控制、恢复活动工具集等修复 |
+| v1.4.0 | 2026-10-21，正式发布 | 本版端点；worker 排队、摘要输出预算、图片分类及恢复边界修复 |
 
 官方仓库现在叫 `earendil-works/pi`，历史上的 `badlogic/pi-mono` Git 地址仍能访问到这个项目。旧源码里的包名前缀是 `@mariozechner/*`，当前是 `@earendil-works/*`。改名是迁移时必须处理的事情，但改名本身不是一种新 Agent 算法。[S1](#s1)、[S2](#s2)
 
-你原有的 `learning/pi-mono` 检出点显示为 `v0.54.0-1-g3a3e37d3`，而且存在本地修改。本次没有修改它，也没有升级当前安装的 Pi。新的 `sources/` 目录单独保存了三个用于比较的固定版本。
+你原有的 `learning/pi-mono` 检出点显示为 `v0.54.0-1-g3a3e37d3`，而且存在本地修改。本次没有修改它，也没有升级当前安装的 Pi。`sources/` 单独保存四个用于比较的固定版本，新增 `pi-v1.4.0/`，不改动原有三个源码检出点。
 
 ### 本书说的“架构”包括什么
 
@@ -40,7 +41,7 @@
 
 ### 不要被 diff 数字带偏
 
-完整 Git 比较中，v0.9.4 到 v1.3.0 涉及 2,110 个变更文件；v0.99.2 到 v1.3.0 涉及 1,315 个。里面包括测试、文档、生成数据和实验代码删除。尤其 v1.2.0 删除了尚未进入正式发布包的实验性服务端、客户端和插件栈。不能看到大量删除，就断言正式 CLI 已经换成另一个分布式运行时。[S2](#s2)、[S18](#s18)
+完整 Git 比较中，v0.9.4 到 v1.4.0 涉及 2,172 个变更文件；v0.99.2 到 v1.4.0 涉及 1,451 个；单独比较 v1.3.0 到 v1.4.0 则有 343 个。里面包括测试、文档、生成数据和实验代码删除。尤其 v1.2.0 删除了尚未进入正式发布包的实验性服务端、客户端和插件栈。不能看到大量删除，就断言正式 CLI 已经换成另一个分布式运行时。[S2](#s2)、[S18](#s18)
 
 **理解检查：** 如果你以前用的是 v0.99.2，Code Mode 不是 v1.0 才发明的；如果你指的是 v0.9.4，就必须把中间接近一年的 harness 演进算进去。
 
@@ -96,7 +97,7 @@ Agent 维护消息、当前模型、流式状态、待执行调用 ID 和消息�
 
 **本章目标：看到整张地图，但不把相邻模块当作同一条执行链。**
 
-v1.3.0 的 CLI 仍建立在有状态 `Agent` 上，不过循环已经和 Agent 放到一起：**`packages/agent/src/agent-loop.ts`**。编码应用层提供 `AgentSession`、会话持久化、上下文投影、资源加载、扩展、模型运行时和不同交互接口。[S6](#s6)、[S7](#s7)
+v1.4.0 的 CLI 仍建立在有状态 `Agent` 上，不过循环已经和 Agent 放到一起：**`packages/agent/src/agent-loop.ts`**。编码应用层提供 `AgentSession`、会话持久化、上下文投影、资源加载、扩展、模型运行时和不同交互接口。[S6](#s6)、[S7](#s7)
 
 ![当前普通 CLI 的运行时职责图](diagrams/current-stack.svg)
 
@@ -180,6 +181,18 @@ contextTokens > contextWindow - reserveTokens
 Code Mode 是**在信息进入模型之前做减量**；压缩是在上下文已经积累后，把早期内容总结成摘要。前者不能替代后者。普通工具调用也可以先截断输出；Code Mode 更适合按数据含义做结构化筛选。[S12](#s12)
 
 例如运行测试得到很长日志。工具截断保留头尾，不知道你只关心三个失败断言；脚本可从结构化结果中选出失败项，再让模型理解原因。但如果你把全部日志 `text()` 出去，就没有获得这部分上下文收益。
+
+### v1.4.0：何时压缩，与摘要能输出多长是两回事
+
+`compaction.reserveTokens` 仍决定自动压缩何时开始，不再给摘要请求套一个按它计算的固定输出帽子。v1.3.0 的主摘要曾取 `floor(0.8 × reserveTokens)` 与模型输出上限中的较小者；推理内容吃掉额度时，正文摘要可能尚未完成就结束。v1.4.0 改用模型输出上限，并在必要时为输入与输出共同适配上下文窗口。因此“移除固定帽子”不表示无限输出，也不表示摘要一定成功。[S12](#s12)、[S28](#s28)
+
+用教学数值手算：上下文窗口 128,000，预留 16,384，则超过 111,616 时触发自动压缩；旧主摘要的比例帽子约为 13,107。新版不会因为相同预留值，就把摘要仍固定限制在 13,107。扩大预留值主要让压缩更早发生，不应继续用它间接调整摘要长度。
+
+分支总结也采用新输出预算。导出的 `generateSummary()` 和 `generateSummaryWithUsage()` 为兼容旧调用保留参数位置，但忽略原来的 `reserveTokens` 参数；维护自定义调用时要重新核对意图。`/compact 保留未解决问题` 之类指令也会传给被切开的回合前缀摘要，修复了此前这部分忽略指令的问题。
+
+### v1.4.0：截断恢复后，工具消息仍要成对
+
+模型在输出上限处被截断，可能留下不完整的工具调用。历史转换不能只丢掉调用请求，却把对应工具结果交给下一轮 provider；孤立结果会使后续请求持续被拒绝。v1.4.0 修复了这条恢复路径。此处说的是模型响应截断后的协议一致性，不是工具长输出被截断后的 JSON 解析问题。[S2](#s2)
 
 ### 什么时候才算真的结束
 
@@ -276,7 +289,7 @@ text(results.map((r, i) => r.status === "fulfilled"
 8. 结果被转换成脚本值，返回 VM；脚本选择性输出。
 9. executor 关闭沙箱、处理状态写入、截断输出、保存图片、生成外层工具结果。
 
-在 v1.3.0 的 `execute.ts` 中，关键语句是：
+在 v1.4.0 的 `execute.ts` 中，关键语句仍是：
 
 ```ts
 const outcome = await ctx.executeTool(tool.name, args, { signal: callSignal });
@@ -461,9 +474,19 @@ text({ count });
 
 ### 取消不代表 worker 已经退出
 
-CLI 当前最多允许同一 Pi 进程中两个 Code Mode worker 存活。Bun 下，某些不轮询中断的内建操作可能在返回取消结果后继续运行，直到该操作结束。v1.3.0 的修复把“对用户立即返回取消”和“实际 worker 退出后释放名额”拆开，避免重复取消积累残留 worker。[S2](#s2)、[S13](#s13)、[S14](#s14)
+CLI 默认最多允许同一 Pi 进程中两个 Code Mode worker 存活，跨会话共享；v1.4.0 可以用环境变量 `PI_CODEMODE_MAX_WORKERS` 指定正整数上限，非法值回退到默认 2。Bun 下，某些不轮询中断的内建操作可能在返回取消结果后继续运行，直到该操作结束。v1.3.0 的修复把“对用户立即返回取消”和“实际 worker 退出后释放名额”拆开，避免重复取消积累残留 worker。[S2](#s2)、[S13](#s13)、[S14](#s14)
 
 这个区别很通用：**响应完成、任务停止、资源回收完成，是三个不同时间点。** 不能在 timeout 返回的瞬间就把并发名额无条件释放。
+
+### v1.4.0：容量用尽时先排队，不是立即失败
+
+v1.3.0 引入真实 worker 数量限制，但名额满时会立即拒绝新脚本。v1.4.0 的 `reserveCodemodeWorker()` 先把等待者加入队列；`admitCodemodeWorkers()` 按到达顺序放行，`releaseCodemodeWorker()` 在实际释放后继续准入。[S26](#s26)
+
+等待最多 60 秒，而且计入脚本的整体 `timeout_ms`。假设脚本总时限 10 秒，排队用掉 8 秒，执行最多只剩约 2 秒；不会在获取名额后再获得一份全新的 10 秒。超时或取消的等待者会从队列移除，没有获得名额就不启动 VM。
+
+“两个 worker”不是“脚本里只能并发两个工具”。一个脚本里的独立工具调用不逐项占用这两个名额；`models.classify()` 与 `models.generateImages()` 则另有每脚本最多 4 项在途调用的限制。提高 worker 上限会增加潜在内存与外部调用压力，不是免费的吞吐提升。
+
+排队也不等于解决所有相互等待：脚本持有 worker，又等同进程中的另一个脚本获取名额，仍可能形成资源等待。60 秒等待上限提供失败出口，不提供无限递归子代理能力；脚本不能直接启动另一个 `codemode`。
 
 ### 四类常见错误的处置
 
@@ -471,7 +494,7 @@ CLI 当前最多允许同一 Pi 进程中两个 Code Mode worker 存活。Bun �
 |---|---|---|
 | `tools.X` 不存在 | 拼写、标识符规范、工具是否可达 | 重新发现并描述工具，不反复猜名字 |
 | JSON.parse 失败 | 是否读到截断输出、日志或错误页面 | 换结构化工具或缩小读取内容 |
-| worker limit reached | 是否还有运行或退出中的 worker | 等已有 worker 退出，不做高频重试 |
+| 等待空闲 worker 超时 | 全进程名额、残留 worker、相互等待和总 deadline | v1.4.0 已自动排队；先查占用，不做高频重试 |
 | 超时或部分成功 | 哪些调用已产生副作用 | 查明实际状态，再决定是否重试；写操作需幂等策略 |
 
 # 第 9 章：扩展、模型与界面，哪些没被 Code Mode 替代
@@ -513,6 +536,47 @@ Code Mode 不会消除 Anthropic、OpenAI、Google 等协议差异。`ai` 层继
 
 脚本中的 `models.*` 可访问模型目录、运行分类器、生成图片，但不能把聊天模型当作任意子 Agent 在脚本中调用。分类和生成图片可能计费，其 usage 会纳入会话成本；要检查 `stopReason` 与 `errorMessage`。图片要用 `image(block)` 展示，不要用 `text()` 打印 base64。[S10](#s10)
 
+### v1.4.0：把图片交给分类器，而非打印 base64
+
+`models.classify()` 新增 `images` 输入，适用于受支持的 Jev、Clef 服务和具有相应能力的模型。不能因为模型类别是 classifier，就认定它支持图片：先查目录中 `input` 是否包含 `"image"`，再按 provider 核对格式与数量限制。图片分类与生成图片是两项不同能力。[S10](#s10)、[S27](#s27)
+
+下面是 `examples/scripts/06-classify-image.js` 的契约示例。实际运行需要可用的图片分类模型、对应凭据和本地 `screenshot.png`，可能产生费用：
+
+```js
+const candidates = await models.getAvailableOfType("classifier");
+const vision = candidates.find(m => m.input?.includes("image"));
+if (!vision) throw new Error("没有可用的图片分类器");
+const photo = await tools.read({ path: "screenshot.png" });
+if (photo.type !== "image") throw new Error("需要图片块");
+const result = await models.classify(vision, {
+  state: { task: "检查页面布局" },
+  images: [photo],
+  questions: {
+    broken: {
+      type: "bool",
+      instructions: "图片中是否有重叠或被截断的内容？",
+      criteria: { true: "存在布局缺陷", false: "未发现布局缺陷" },
+    },
+  },
+});
+if (result.stopReason !== "stop") {
+  throw new Error(result.errorMessage ?? result.stopReason);
+}
+const answer = result.answers.broken;
+if (answer?.type !== "bool") throw new Error("分类回答类型不符");
+text({ probability: answer.probability });
+```
+
+`probability` 是模型判断的概率，不是经过本书验证的页面缺陷率，也不能证明图片没有问题。本书仅用替身检查调用结构、错误处理和不输出图片内容，没有调用真实分类服务。
+
+代理兼容尤其需要注意：各 System One 服务接收图片的格式不同。`compat.imageInput` 和 `sendImageOptInHeader` 可在 provider 层配置；直接把请求改发 OpenRouter，却继续使用 TypeSafe 的 assets 形态，可能出现请求成功但图片被忽略。v1.4.0 新增的 `models-configuration.md` 从 schema 生成字段参考，按实际代理协议查证，不猜兼容选项。[S29](#s29)
+
+### 恢复会话与扩展弹窗也有边界修复
+
+v1.3.0 已恢复分支记录过的活动工具；v1.4.0 进一步处理工具注册晚于分支记录的情况，例如会话开始后新装扩展。分支未显式增删的工具默认可活动，但 `defaultActive: false` 仍应生效。恢复后要检查实际可调用集合，不能把这项修复理解成强制启用所有工具。
+
+交互式扩展同时打开 `select`、`confirm`、`input`、`editor` 或 inline `custom()` 时，新弹窗不再让先前 Promise 永久悬挂；关闭当前弹窗会回到前一个。这修的是交互生命周期，不是给扩展增加 OS 权限隔离。[S2](#s2)
+
 ### 选择哪种集成方式
 
 | 需要 | 优先接口 | 注意事项 |
@@ -534,11 +598,11 @@ CLI 会加载内置 Code Mode、tool-search、MCP 扩展；SDK 默认不会替�
 **设计练习：** “每次调用 shell 前做企业策略校验”应该写进临时 Code Mode 脚本吗？不应该。应在工具边界实现可审计的扩展策略，并用 OS/容器限制补上真正的权限边界。模型生成的代码不是强制执行安全策略的地方。
 
 
-# 第 10 章：从 0.99.2 到 1.3.0，具体差了什么
+# 第 10 章：从 0.99.2 到 1.4.0，具体差了什么
 
-**本章目标：避免把长期演进和最近两周的变化混在一起。**
+**本章目标：把长期演进、1.3.0 基线和 1.4.0 增量分开。**
 
-如果你的“0.9.xxx”其实是 0.99.2，前面很多机制你已经有了：Code Mode、独立 `pi-codemode` 包、工具发现、MCP、树形会话、统一扩展，并不是升级到 1.3.0 才第一次出现。下面只看这个较短区间。[S2](#s2)、[S21](#s21)
+如果你的“0.9.xxx”其实是 0.99.2，前面很多机制你已经有了：Code Mode、独立 `pi-codemode` 包、工具发现、MCP、树形会话、统一扩展，并不是升级到 1.4.0 才第一次出现。下面只看这个较短区间。[S2](#s2)、[S21](#s21)
 
 | 版本 | Code Mode 及相关架构变化 | 对使用者的影响 |
 |---|---|---|
@@ -553,6 +617,19 @@ CLI 会加载内置 Code Mode、tool-search、MCP 扩展；SDK 默认不会替�
 | 1.2.0 | Durable 加入可恢复的 Code Mode；删除 CLI 未发布服务端实验栈 | 需要恢复的应用有新路径，但不可照旧实验目录继续开发 |
 | 1.3.0 | 取消结果不等待实际退出；按真实 worker 生命周期限制容量 | timeout 更及时，重复取消不会无上限积累 worker |
 | 1.3.0 | 恢复会话时保留活动工具；内部 Pi 依赖固定到精确版本 | 恢复后的工具集更一致，减少混装不同内部版本 |
+| 1.4.0 | worker 满时排队，最多等待 60 秒；可调整全进程 worker 上限 | 并行脚本不再立即因容量不足失败，等待仍消耗总 deadline |
+| 1.4.0 | 压缩及分支摘要使用模型输出上限 | `reserveTokens` 只决定压缩触发时机，不再间接限制摘要长度 |
+| 1.4.0 | 图片分类输入、provider 分类器兼容字段、配置字段参考 | 可用结构化问题检查图片，但要核对模型能力、协议与费用 |
+| 1.4.0 | 截断工具消息、晚注册扩展工具与并发弹窗修复 | 恢复后消息和工具更一致，交互 Promise 不再被新弹窗遗留 |
+
+### 从 v1.3.0 升到 v1.4.0，优先验哪四件事
+
+1. 在隔离测试进程中占满 worker，再发新脚本，观察它等待后启动或到期失败；检查等待时间是否计入总 deadline。
+2. 用支持推理的模型执行长会话压缩，确认没有继续将 `reserveTokens` 当摘要长度旋钮；对分割回合检查自定义摘要指令。
+3. 对图片分类保留“无可用模型”“服务失败”“仅文字模型”反例，不把 Promise fulfilled 当业务成功。
+4. 从旧会话恢复、切换树形分支并加载扩展，核对活动工具；注入模型输出截断后核对工具请求与结果仍然配对。
+
+这些是集成验收建议，不是本轮全部已运行的测试。1.4.0 的 Rex 终端支持、退出模式清理、Linux 挂起后的剪贴板和中文标点旁 Markdown 渲染也有改善，但没有改变前面所画的 Agent / AgentSession / Code Mode 职责分层。[S2](#s2)
 
 ### “约少 40% token”到底指什么
 
@@ -677,7 +754,9 @@ Cloudflare 还有两个限制要单独理解：计算不 yield 时墙钟 timeout
 - [ ] shell 判断退出码，MCP 判断 `isError`。
 - [ ] options 行确实在脚本第一行。
 - [ ] 需要保存的图片调用 `image()`，不把 base64 当文本输出。
-- [ ] 自定义沙箱资源池按真实 worker 退出释放容量。
+- [ ] 自定义沙箱资源池按真实 worker 退出释放容量，排队不重置总 deadline。
+- [ ] `reserveTokens` 按触发阈值配置，不继续当摘要输出帽子。
+- [ ] 图片分类核对 `input`、provider 图片协议、错误结果与 usage。
 - [ ] 自定义编排器声明正确的 `reachesTools`。
 - [ ] 旧 experimental harness 或 server/client 导出没有继续被引用。
 - [ ] 恢复会话后验证活动工具与过滤策略，不仅看启动命令。
@@ -685,11 +764,15 @@ Cloudflare 还有两个限制要单独理解：计算不 yield 时墙钟 timeout
 
 ### 12.3 在不改安装的情况下阅读本次下载
 
-以下目录已经准备好，不需要再次 clone：
+以下命令核对本机保留的研究副本；公开电子书不附完整 Git 目录。其他读者可先下载本版源码 ZIP，或按固定标签准备自己的副本。
 
 ```sh
-cd /home/stardust/Documents/learning/pi-mono-evolution
+# 在电子书仓库根目录执行。
 
+git -C sources/pi-v1.4.0 describe --tags --exact-match
+# v1.4.0
+
+# 上一版参照仍保留：
 git -C sources/pi-mono describe --tags --exact-match
 # v1.3.0
 
@@ -700,7 +783,7 @@ git -C sources/pi-v0.99.2 describe --tags --exact-match
 # v0.99.2
 ```
 
-`pi-mono-v1.3.0.zip` 是不包含依赖与 Git 历史的源码快照，方便离线拷贝。安装依赖或更新全局 Pi 是独立操作，本次没有执行。
+`pi-mono-v1.4.0.zip` 是不包含依赖与 Git 历史的源码快照，方便离线拷贝。安装依赖或更新全局 Pi 是独立操作，本次没有执行。
 
 ### 实验 A：开启 Code Mode，但保留默认工具
 
@@ -728,7 +811,7 @@ pi --tools +codemode
 node examples/run-checks.mjs
 ```
 
-它检查并行读取与字段筛选、部分失败保留、非零 shell 退出码、成功/失败状态提交，以及输出减量算术。它不是 QuickJS 的安全测试，不调用外部服务，也不能证明 MCP 或真实沙箱无缺陷。Code Mode 脚本放在 `examples/scripts/`，可以阅读或交给 Pi 使用。
+它检查并行读取与字段筛选、部分失败保留、非零 shell 退出码、成功/失败状态提交，图片分类的成功与失败契约，以及输出减量算术。它不是 QuickJS 的安全测试，不调用外部服务，也不能证明 MCP 或真实沙箱无缺陷。Code Mode 脚本放在 `examples/scripts/`，可以阅读或交给 Pi 使用。
 
 ### 实验 C：观察分支与外部世界的区别
 
@@ -777,17 +860,17 @@ node examples/run-checks.mjs
 
 <div class="source" id="s1">
 
-**[S1] [最新发布与固定标签](https://github.com/earendil-works/pi/releases/tag/v1.3.0)**
+**[S1] [最新发布与固定标签](https://github.com/earendil-works/pi/releases/tag/v1.4.0)**
 
-最新正式发布核查：v1.3.0，2026-10-15；详细元数据见 versions.json。
+本版正式发布端点：v1.4.0，2026-10-21；详细元数据见 versions.json。
 
 </div>
 
 <div class="source" id="s2">
 
-**[S2] [coding-agent 版本变更日志](https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/CHANGELOG.md)**
+**[S2] [coding-agent 版本变更日志](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/CHANGELOG.md)**
 
-版本时间线、Code Mode/MCP 引入、1.0 至 1.3 的功能与修复。
+版本时间线、Code Mode/MCP 引入、1.0 至 1.4 的功能与修复。
 
 </div>
 
@@ -817,7 +900,7 @@ JSONL 记录与复制到新文件的分支方式。
 
 <div class="source" id="s6">
 
-**[S6] [当前 Agent 核心文档](https://github.com/earendil-works/pi/blob/v1.3.0/packages/agent/README.md)**
+**[S6] [当前 Agent 核心文档](https://github.com/earendil-works/pi/blob/v1.4.0/packages/agent/README.md)**
 
 消息变换、事件、并行默认执行及顺序保证。
 
@@ -825,7 +908,7 @@ JSONL 记录与复制到新文件的分支方式。
 
 <div class="source" id="s7">
 
-**[S7] [How Pi Works](https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/docs/how-pi-works.md)**
+**[S7] [How Pi Works](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/how-pi-works.md)**
 
 当前主运行链、上下文、会话和接口。
 
@@ -833,7 +916,7 @@ JSONL 记录与复制到新文件的分支方式。
 
 <div class="source" id="s8">
 
-**[S8] [普通 CLI 包清单与依赖](https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/package.json)**
+**[S8] [普通 CLI 包清单与依赖](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/package.json)**
 
 依赖精确固定；不依赖 pi-durable、pi-env 或 chord。其他包的 package.json 同保存在下载源码中。
 
@@ -841,7 +924,7 @@ JSONL 记录与复制到新文件的分支方式。
 
 <div class="source" id="s9">
 
-**[S9] [SDK 生命周期与状态](https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/docs/sdk.md)**
+**[S9] [SDK 生命周期与状态](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/sdk.md)**
 
 AgentSession、SessionManager、agent_settled、资源加载与内置扩展差异。
 
@@ -849,7 +932,7 @@ AgentSession、SessionManager、agent_settled、资源加载与内置扩展差�
 
 <div class="source" id="s10">
 
-**[S10] [Code Mode 用户与脚本契约](https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/docs/codemode.md)**
+**[S10] [Code Mode 用户与脚本契约](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/codemode.md)**
 
 全局接口、返回值、输出、store、models 与限制。
 
@@ -857,7 +940,7 @@ AgentSession、SessionManager、agent_settled、资源加载与内置扩展差�
 
 <div class="source" id="s11">
 
-**[S11] [当前会话文件格式](https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/docs/session-format.md)**
+**[S11] [当前会话文件格式](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/session-format.md)**
 
 树形条目、压缩、context_edit、自定义状态、上下文投影。
 
@@ -865,7 +948,7 @@ AgentSession、SessionManager、agent_settled、资源加载与内置扩展差�
 
 <div class="source" id="s12">
 
-**[S12] [压缩机制](https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/docs/compaction.md)**
+**[S12] [压缩机制](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/compaction.md)**
 
 阈值、保留边界、摘要、分支总结与恢复。
 
@@ -873,7 +956,7 @@ AgentSession、SessionManager、agent_settled、资源加载与内置扩展差�
 
 <div class="source" id="s13">
 
-**[S13] [独立 Code Mode 沙箱库](https://github.com/earendil-works/pi/blob/v1.3.0/packages/codemode/README.md)**
+**[S13] [独立 Code Mode 沙箱库](https://github.com/earendil-works/pi/blob/v1.4.0/packages/codemode/README.md)**
 
 worker 与 QuickJS、独立使用、Cloudflare、确定性 start 和结果契约。
 
@@ -881,7 +964,7 @@ worker 与 QuickJS、独立使用、Cloudflare、确定性 start 和结果契约
 
 <div class="source" id="s14">
 
-**[S14] [Code Mode executor 实现](https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/src/extensions/codemode/execute.ts)**
+**[S14] [Code Mode executor 实现](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/src/extensions/codemode/execute.ts)**
 
 ctx.executeTool 调用链、结果适配、状态提交、worker 数量控制。
 
@@ -889,7 +972,7 @@ ctx.executeTool 调用链、结果适配、状态提交、worker 数量控制。
 
 <div class="source" id="s15">
 
-**[S15] [扩展、嵌套调用与工具契约](https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/docs/extensions.md)**
+**[S15] [扩展、嵌套调用与工具契约](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/extensions.md)**
 
 exposure、prepareLoadout、reachesTools、状态、事件与权限扩展。
 
@@ -897,7 +980,7 @@ exposure、prepareLoadout、reachesTools、状态、事件与权限扩展。
 
 <div class="source" id="s16">
 
-**[S16] [MCP 接入与 exposure](https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/docs/mcp.md)**
+**[S16] [MCP 接入与 exposure](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/mcp.md)**
 
 命名、连接时机、发现、过滤、完整 MCP 返回对象、OAuth 与替换扩展。
 
@@ -905,7 +988,7 @@ exposure、prepareLoadout、reachesTools、状态、事件与权限扩展。
 
 <div class="source" id="s17">
 
-**[S17] [设置与工具呈现](https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/docs/settings.md)**
+**[S17] [设置与工具呈现](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/settings.md)**
 
 defaultTools、codemode.mode、inlineBudget、TUI 与会话设置。
 
@@ -921,7 +1004,7 @@ defaultTools、codemode.mode、inlineBudget、TUI 与会话设置。
 
 <div class="source" id="s19">
 
-**[S19] [命令行参考](https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/docs/cli.md)**
+**[S19] [命令行参考](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/cli.md)**
 
 启用 Code Mode、增量工具选择、MCP 排除、运行模式。
 
@@ -929,7 +1012,7 @@ defaultTools、codemode.mode、inlineBudget、TUI 与会话设置。
 
 <div class="source" id="s20">
 
-**[S20] [官方 SDK Code Mode/MCP 示例](https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/examples/sdk/14-codemode-mcp.ts)**
+**[S20] [官方 SDK Code Mode/MCP 示例](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/examples/sdk/14-codemode-mcp.ts)**
 
 添加三个内置扩展、启用工具、bindExtensions、释放资源。
 
@@ -937,7 +1020,7 @@ defaultTools、codemode.mode、inlineBudget、TUI 与会话设置。
 
 <div class="source" id="s21">
 
-**[S21] [独立 Code Mode 包的版本变化](https://github.com/earendil-works/pi/blob/v1.3.0/packages/codemode/CHANGELOG.md)**
+**[S21] [独立 Code Mode 包的版本变化](https://github.com/earendil-works/pi/blob/v1.4.0/packages/codemode/CHANGELOG.md)**
 
 start、portable、remote、未知成员、冻结内建对象、close 与 worker 生命周期。
 
@@ -945,7 +1028,7 @@ start、portable、remote、未知成员、冻结内建对象、close 与 worker
 
 <div class="source" id="s22">
 
-**[S22] [Agent 包迁移与清理记录](https://github.com/earendil-works/pi/blob/v1.3.0/packages/agent/CHANGELOG.md)**
+**[S22] [Agent 包迁移与清理记录](https://github.com/earendil-works/pi/blob/v1.4.0/packages/agent/CHANGELOG.md)**
 
 旧 transport 删除、并行工具执行、1.0.0 移除实验 harness 导出。
 
@@ -953,7 +1036,7 @@ start、portable、remote、未知成员、冻结内建对象、close 与 worker
 
 <div class="source" id="s23">
 
-**[S23] [实验性 Durable Harness](https://github.com/earendil-works/pi/blob/v1.3.0/packages/durable/README.md)**
+**[S23] [实验性 Durable Harness](https://github.com/earendil-works/pi/blob/v1.4.0/packages/durable/README.md)**
 
 任务与存储、Code Mode journal/replay、幂等与 replay 策略、独立 API。
 
@@ -961,7 +1044,7 @@ start、portable、remote、未知成员、冻结内建对象、close 与 worker
 
 <div class="source" id="s24">
 
-**[S24] [远程执行环境 pi-env](https://github.com/earendil-works/pi/blob/v1.3.0/packages/env/README.md)**
+**[S24] [远程执行环境 pi-env](https://github.com/earendil-works/pi/blob/v1.4.0/packages/env/README.md)**
 
 SSH、Rust daemon、RemoteExecutionEnv、host key 与远程语义。
 
@@ -969,15 +1052,47 @@ SSH、Rust daemon、RemoteExecutionEnv、host key 与远程语义。
 
 <div class="source" id="s25">
 
-**[S25] [安全与项目可信决策](https://github.com/earendil-works/pi/blob/v1.3.0/packages/coding-agent/docs/security.md)**
+**[S25] [安全与项目可信决策](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/security.md)**
 
 无默认逐调用审批；OS 权限、容器、可信资源与 prompt injection 边界。
 
 </div>
 
+<div class="source" id="s26">
+
+**[S26] [v1.4.0 worker 排队与容量准入](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/src/extensions/codemode/execute.ts)**
+
+reserveCodemodeWorker、FIFO 放行、60 秒等待、总 deadline 与 PI_CODEMODE_MAX_WORKERS。
+
+</div>
+
+<div class="source" id="s27">
+
+**[S27] [v1.4.0 分类器图片能力与供应商边界](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/models.md)**
+
+input 能力、图片格式、System One 接入差异、usage 与费用。
+
+</div>
+
+<div class="source" id="s28">
+
+**[S28] [v1.4.0 摘要输出预算实现](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/src/core/compaction/compaction.ts)**
+
+移除固定输出比例帽子，保留旧函数参数位置，将自定义指令传入回合前缀摘要。
+
+</div>
+
+<div class="source" id="s29">
+
+**[S29] [v1.4.0 Models Configuration 字段参考](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/models-configuration.md)**
+
+从 schema 生成的 provider、模型和兼容字段，含分类器图片协议选项。
+
+</div>
+
 ## 核查范围与限制
 
-本书对照官方发布 API、三个固定标签、相关包清单、主运行链文档、核心循环及 Code Mode 适配实现，保存了完整 diff 清单。书中代码区分可运行示例与占位伪代码。
+本书对照官方发布 API、四个固定标签、相关包清单、主运行链文档、核心循环及 Code Mode 适配实现，保存了完整 diff 清单。书中代码区分可运行示例与占位伪代码。
 
 教学脚本使用 Node 和模拟工具验证。HTML、PDF、EPUB 另做渲染或结构检查。没有运行完整上游测试套件，没有部署 Cloudflare 或 SSH 环境，没有用付费模型验证生成质量，没有做沙箱安全审计；上游测量数据明确标注为上游结果。
 
@@ -988,5 +1103,6 @@ SSH、Rust daemon、RemoteExecutionEnv、host key 与远程语义。
 - `v0.9.4`：`a484330cd15e5844dfa42a4749594067128ea0c1`
 - `v0.99.2`：`005af57d88ee23b33778f343a9595b32e67ff788`
 - `v1.3.0`：`71023aec1546d6d677a65669c5665c0927ce0dd0`
+- `v1.4.0`：`4a080252f06caf63a525d7873c5d94d3c23887e0`
 
 来源材料为官方仓库中的文档与源码；电子书是整理后的教学解释，不代表项目官方文档。

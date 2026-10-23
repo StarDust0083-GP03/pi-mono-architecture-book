@@ -11,8 +11,13 @@ import xml.etree.ElementTree as ET
 from markdown_it import MarkdownIt
 
 ROOT = Path(__file__).parent
+versions = json.loads((ROOT/'sources/versions.json').read_text())
+VERSION = versions['target_version']
+TAG = f'v{VERSION}'
+CHECKED_DATE = versions['checked_at'][:10]
+SOURCE_DIRS = {'v0.9.4': 'pi-v0.9.4', 'v0.99.2': 'pi-v0.99.2', 'v1.3.0': 'pi-mono', 'v1.4.0': 'pi-v1.4.0'}
 TITLE = '从工具循环到 Code Mode'
-SUBTITLE = 'Pi 架构演进：v0.9.4、v0.99.2 与 v1.3.0'
+SUBTITLE = f'Pi 架构演进：v0.9.4、v0.99.2 与 {TAG}'
 CSS = '''
 :root{--paper:#f5f4ed;--panel:#faf9f5;--ink:#20201d;--muted:#6b6a64;--line:#dedbd0;--brand:#1B365D}
 *{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:24px}
@@ -67,24 +72,23 @@ updateDemo();
 '''
 
 sources = json.loads((ROOT/'sources/source-index.json').read_text())
-versions = json.loads((ROOT/'sources/versions.json').read_text())
 source_md = '\n# 来源索引与核查范围\n\n所有文件链接固定到对应版本标签。方括号来源编号可从正文跳转；源码副本位于同目录 `sources/`。\n\n'
 for source in sources:
     if source.get('kind') == 'release':
-        url = 'https://github.com/earendil-works/pi/releases/tag/v1.3.0'
+        url = f'https://github.com/earendil-works/pi/releases/tag/{source.get("tag", TAG)}'
     elif source.get('kind') == 'commit':
         sha = subprocess.check_output(['git','-C',str(ROOT/'sources/pi-mono'),'rev-parse',source['commit']],text=True).strip()
         url = f'https://github.com/earendil-works/pi/commit/{sha}'
     else:
-        tag = source.get('tag','v1.3.0')
-        local = ROOT/'sources'/({'v0.9.4':'pi-v0.9.4','v0.99.2':'pi-v0.99.2'}.get(tag,'pi-mono'))/source['path']
+        tag = source.get('tag', TAG)
+        local = ROOT/'sources'/SOURCE_DIRS[tag]/source['path']
         assert local.is_file(), local
         url = f'https://github.com/earendil-works/pi/blob/{tag}/{source["path"]}'
     source['url'] = url
     source_md += f'<div class="source" id="{source["id"]}">\n\n**[{source["id"].upper()}] [{source["title"]}]({url})**\n\n{source["note"]}\n\n</div>\n\n'
 source_md += '''## 核查范围与限制
 
-本书对照官方发布 API、三个固定标签、相关包清单、主运行链文档、核心循环及 Code Mode 适配实现，保存了完整 diff 清单。书中代码区分可运行示例与占位伪代码。
+本书对照官方发布 API、四个固定标签、相关包清单、主运行链文档、核心循环及 Code Mode 适配实现，保存了完整 diff 清单。书中代码区分可运行示例与占位伪代码。
 
 教学脚本使用 Node 和模拟工具验证。HTML、PDF、EPUB 另做渲染或结构检查。没有运行完整上游测试套件，没有部署 Cloudflare 或 SSH 环境，没有用付费模型验证生成质量，没有做沙箱安全审计；上游测量数据明确标注为上游结果。
 
@@ -130,8 +134,8 @@ head = re.sub(r'<title>.*?</title>',f'<title>{TITLE} · Pi 中文架构电子书
 # 保留初始化器的主题 token；阅读与打印布局不依赖 CDN 成功加载。
 head += f'<style>{CSS}</style></head>'
 result = head + f'''<body><div class="layout"><nav class="toc" aria-label="章节目录"><div class="nav-title">Pi 架构演进</div>{nav}</nav>
-<main><header class="edition">中文源码导读 · 2026-10-20 · 最新核查版本 v1.3.0<br />12 章 · {len(list((ROOT/'diagrams').glob('*.svg')))} 张架构图 · 5 个可验证脚本</header>
-<div class="tools"><a href="pi-architecture.zh-CN.pdf">下载 PDF</a><a href="pi-architecture.zh-CN.epub">下载 EPUB</a><a href="book.zh-CN.md">Markdown 原稿</a><a href="https://github.com/StarDust0083-GP03/pi-mono-architecture-book/releases/download/book-v1.3.0/pi-mono-v1.3.0.zip">v1.3.0 源码 ZIP</a><button id="print-book" type="button">打印 / 存为 PDF</button></div>
+<main><header class="edition">中文源码导读 · {CHECKED_DATE} · 本版核查版本 {TAG}<br />12 章 · {len(list((ROOT/'diagrams').glob('*.svg')))} 张架构图 · 6 个可验证脚本</header>
+<div class="tools"><a href="pi-architecture.zh-CN.pdf">下载 PDF</a><a href="pi-architecture.zh-CN.epub">下载 EPUB</a><a href="book.zh-CN.md">Markdown 原稿</a><a href="https://github.com/StarDust0083-GP03/pi-mono-architecture-book/releases/download/book-{TAG}/pi-mono-{TAG}.zip">{TAG} 源码 ZIP</a><button id="print-book" type="button">打印 / 存为 PDF</button></div>
 {body}<footer>阅读建议：先运行教学检查，再对照固定版本源码核对你需要迁移的接口。下载的是源码，没有修改当前 Pi 安装。</footer></main></div><script>{JS}</script></body></html>'''
 (ROOT/'index.html').write_text(result)
 
@@ -139,7 +143,7 @@ result = head + f'''<body><div class="layout"><nav class="toc" aria-label="章�
 epub_body = figures(content,False)
 # 确认 Markdown 渲染出的片段是有效 XHTML。
 ET.fromstring('<div>'+epub_body+'</div>')
-identifier = str(uuid.uuid5(uuid.NAMESPACE_URL,'https://github.com/earendil-works/pi/v1.3.0/zh-ebook'))
+identifier = str(uuid.uuid5(uuid.NAMESPACE_URL,f'https://github.com/earendil-works/pi/{TAG}/zh-ebook'))
 now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 navitems = ''.join(f'<li><a href="book.xhtml#{a}">{html.escape(t)}</a></li>' for a,t in toc)
 epub_css = re.sub(r'@page\{.*?\}\}', '', CSS, flags=re.S) + '\nbody{padding:1em}h1#cover{font-size:2.3em}h1{break-before:page}table{font-size:.8em}pre,pre code{white-space:pre-wrap;overflow-wrap:anywhere}figure img{max-width:100%;height:auto}h2{font-size:1.3em}'
