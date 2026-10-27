@@ -49,6 +49,7 @@ blockquote{margin:24px 0;border-left:3px solid var(--brand);padding:1px 20px;col
 @page{size:A4;margin:18mm 16mm 20mm;@bottom-right{content:counter(page);font:9pt sans-serif;color:#6b6a64}}
 @media print{.print-toc{display:block;break-before:page}.print-toc a{display:block;font-size:11pt;margin:8px 0}.print-toc h2{margin-top:15mm}html{scroll-behavior:auto}body{background:#fff;font-size:10.5pt;line-height:1.85}.layout{display:block;padding:0;max-width:none}main{max-width:none}nav.toc,.tools,.playground input,.playground label,button,.screen-only{display:none!important}h1{break-before:page;font-size:24pt;margin:15mm 0 8mm}h1#cover{break-before:auto;font-size:37pt;margin-top:25mm}h2{font-size:18pt}h3{font-size:14pt;break-after:avoid}p,li{orphans:3;widows:3}table{font-size:8.5pt}thead{display:table-header-group}tr{break-inside:avoid}pre{white-space:pre-wrap;font-size:8pt;overflow:visible;break-inside:avoid}pre code{white-space:pre-wrap;overflow-wrap:anywhere}figure{padding:10px 0;break-inside:avoid}figcaption{font-size:9pt}.source{break-inside:avoid}a{color:inherit;text-decoration:none}.edition{font-size:10pt}footer{break-before:page}}
 '''
+CSS += '\n' + (ROOT / 'reader-polish.css').read_text()
 DEMO = '''<aside class="playground" aria-labelledby="demo-title">
 <h3 id="demo-title">动手调一调：多少信息需要跨回模型？</h3>
 <p>修改调用数量与结果大小，观察字段筛选前后的字符量。这里只算数据字符，不估算 token、费用或实际耗时。</p>
@@ -71,6 +72,7 @@ document.getElementById('print-book').addEventListener('click',()=>window.print(
 updateDemo();
 '''
 
+JS += '\n' + (ROOT / 'reader-enhancements.js').read_text()
 sources = json.loads((ROOT/'sources/source-index.json').read_text())
 source_md = '\n# 来源索引与核查范围\n\n所有文件链接固定到对应版本标签。方括号来源编号可从正文跳转；源码副本位于同目录 `sources/`。\n\n'
 for source in sources:
